@@ -3,7 +3,7 @@ if(${SOLUTION_NAME} STREQUAL "solution")
   project(${SOLUTION_NAME})
 endif()
 
-set(SOLUTION_EXECUTABLE_PROJECTS "skopworks;")
+set(SOLUTION_EXECUTABLE_PROJECTS "assignment1;")
 #list(APPEND SOLUTION_EXECUTABLE_PROJECTS "nextExeProject;")
 
 set(SOLUTION_LIBRARY_PROJECTS "skopworksLib;")

@@ -34,7 +34,7 @@ class Demo
 {
 public:
   Demo()
-    : Application("2LoC Engine")
+    : Application("NEWT | assignment1")
   { }
 
 private:
@@ -48,7 +48,7 @@ private:
     //------------------------------------------------------------------------
 
     auto_cref to = app::resources::f_resource::LoadImageAsTextureObject
-      (core_io::Path(g_assetsPath + "/images/engine_logo.png"));
+      (core_io::Path(g_assetsPath + "/images/newt_logo.png"));
 
     gfx_gl::uniform_vso  u_to;
     u_to->SetName("s_texture").SetValueAs(*to);

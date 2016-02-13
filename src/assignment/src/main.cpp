@@ -29,19 +29,31 @@ namespace {
 	const core_str::String g_assetsPath(GetAssetsPath());
 };
 
-//----------------------------------------------------------------------------------
-// MouseCallback
+
+
+
 class MouseCallback
 {
 public:
-	MouseCallback(){}
+	MouseCallback() {}
 
+	float mScaleX = 1.0f, mScaleY = 1.0f, mScaleZ = 1.0f;
+	float mAngleX = 0.0f, mAngleY = 0.0f;
+
+	bool mIsLeftButtonPressed = false, mIsRightButtonPressed = false, mIsCetnerButtonPressed = false;
 
 	//on button press
-	core_dispatch::Event OnMouseButtonPress(const tl_size a_caller, 
-											const input_hid::MouseEvent&, 
-											const input_hid::MouseEvent::button_code_type a_button)
+	core_dispatch::Event OnMouseButtonPress(const tl_size a_caller,
+		const input_hid::MouseEvent&,
+		const input_hid::MouseEvent::button_code_type a_button)
 	{
+		if (a_button == input_hid::MouseEvent::left)
+		{
+			mIsLeftButtonPressed = true;
+		}
+
+
+
 		TLOC_LOG_CORE_INFO() <<
 			core_str::Format("Caller %i pushed a button. Button state is: %i",
 			(tl_int)a_caller, a_button);
@@ -51,10 +63,15 @@ public:
 
 
 	//on button release
-	core_dispatch::Event OnMouseButtonRelease(const tl_size a_caller, 
-											  const input_hid::MouseEvent&, 
-											  const input_hid::MouseEvent::button_code_type a_button)
+	core_dispatch::Event OnMouseButtonRelease(const tl_size a_caller,
+		const input_hid::MouseEvent&,
+		const input_hid::MouseEvent::button_code_type a_button)
 	{
+		if (a_button == input_hid::MouseEvent::left)
+		{
+			mIsLeftButtonPressed = false;
+		}
+
 		TLOC_LOG_CORE_INFO() <<
 			core_str::Format("Caller %i released a button. Button state is %i",
 			(tl_int)a_caller, a_button);
@@ -66,6 +83,12 @@ public:
 	//on mouse movement
 	core_dispatch::Event OnMouseMove(const tl_size a_caller, const input_hid::MouseEvent& a_event)
 	{
+		if (mIsLeftButtonPressed)
+		{
+			TLOC_LOG_CORE_INFO() <<
+				core_str::Format("CHANGE SCALE.");
+		}
+
 		TLOC_LOG_CORE_INFO() <<
 			core_str::Format("Caller %i moved the mouse by %i %i %i ", (tl_int)a_caller,
 			a_event.m_X.m_rel,
@@ -80,6 +103,13 @@ public:
 	}
 };
 TLOC_DEF_TYPE(MouseCallback);
+
+
+
+
+
+
+
 
 //----------------------------------------------------------------------------------
 // assignment2 
@@ -115,14 +145,9 @@ public:
 
 		//check if there is a mouse and keyboard attached.
 		TLOC_LOG_CORE_WARN_IF(mKeyboard == nullptr) << "No keyboard detected";
-		TLOC_LOG_CORE_WARN_IF(mMouse == nullptr) << "No mouse detected";
+		TLOC_LOG_CORE_WARN_IF(mMouse == nullptr) << "No mouse detected";		
 
-
-
-		//create keyboard and mouse callbacks and register them with their respective HIDs
-		
-
-		
+		//register mouse callback
 		if (mMouse) { mMouse->Register(&mMouseCallback); }
 
 
@@ -164,7 +189,7 @@ private:
 
 
 	float mAngleX, mAngleY;			 //variables for rotation
-	float mScaleX, mScaleY, mScaleZ;   //variables for scale
+	float mScaleX, mScaleY, mScaleZ; //variables for scale
 
 	//constant to scale cube and keep vertice values clean
 	math_t::Vec3f32 mConstantScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);

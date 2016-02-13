@@ -338,6 +338,15 @@ exit(0);
 	  //end the gl call.
 	  glEnd();
   }
+
+  void DoUpdate(sec_type a_deltaT) override
+  {
+	  sec_type deltaT = a_deltaT;
+
+	  deltaT *= 1;
+	  mInputManager->Update();
+
+  }
 };
 
 // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

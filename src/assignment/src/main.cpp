@@ -36,8 +36,7 @@ namespace {
 class KeyboardCallback
 {
 public:
-	KeyboardCallback()
-	{ }
+	KeyboardCallback() {}
 
 	// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
@@ -137,7 +136,10 @@ class Assignment2
 public:
 	Assignment2() : Application("NEWT | assignment2"),
 		mAngleX(0.0f), mAngleY(0.0f),
-		mScaleX(1.0f), mScaleY(1.0f), mScaleZ(1.0f)
+		mScaleX(1.0f), mScaleY(1.0f), mScaleZ(1.0f),
+
+		mIsAltPressed(false), mIsLeftMouseButtonPressed(false), mIsRightMouseButtonPressed(false), mIsCenterMouseButtonPressed(false)
+
 	{}
 
   error_type Post_Initialize() override
@@ -197,6 +199,13 @@ private:
   float mAngleX, mAngleY;			 //variables for rotation
   float mScaleX, mScaleY, mScaleZ;   //variables for scale
 
+  //flags for input
+  bool mIsAltPressed, mIsLeftMouseButtonPressed, mIsRightMouseButtonPressed, mIsCenterMouseButtonPressed;
+
+  //constant to scale cube and keep vertice values clean
+  math_t::Vec3f32 mConstantScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
+
+
 
   void DoRender(sec_type) override
   {
@@ -216,8 +225,7 @@ private:
 
 //will be moved and changed
 	  //showing the ability to scale
-	  math_t::Vec3f32 scaleFactor(0.5f, 0.5f, 0.5f);
-	  glScalef(scaleFactor[0] * 1.0f / aspectRatio, scaleFactor[1], scaleFactor[2]);
+	  glScalef(mConstantScaleFactor[0] * 1.0f / aspectRatio, mConstantScaleFactor[1], mConstantScaleFactor[2]);
 
 	  //showing the ability to rotate
 	  glRotatef(mAngleY++, 0, 1, 0); //rotate around the y axis

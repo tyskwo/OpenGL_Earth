@@ -32,49 +32,16 @@ namespace {
 
 
 
-//----------------------------------------------------------------------------------
-// KeyboardCallback
-
-class KeyboardCallback
-{
-public:
-	KeyboardCallback() {}
-
-
-	//on key press
-	core_dispatch::Event OnKeyPress(const tl_size a_caller, 
-									const input_hid::KeyboardEvent& a_event)
-	{
-		TLOC_LOG_CORE_INFO() <<
-			core_str::Format("Caller %i pressed a key. Key code is: %i",
-			(tl_int)a_caller, a_event.m_keyCode);
-
-		return core_dispatch::f_event::Continue();
-	}
-
-	//on key release
-	core_dispatch::Event OnKeyRelease(const tl_size a_caller,
-									  const input_hid::KeyboardEvent& a_event)
-	{
-		TLOC_LOG_CORE_INFO() <<
-			core_str::Format("Caller %i released a key. Key code is %i",
-			(tl_int)a_caller, a_event.m_keyCode);
-
-		return core_dispatch::f_event::Continue();
-	}
-};
-TLOC_DEF_TYPE(KeyboardCallback);
 
 
 
 
 //----------------------------------------------------------------------------------
 // MouseCallback
-
 class MouseCallback
 {
 public:
-	MouseCallback() {}
+	MouseCallback() : mIsLeftMouseButtonPressed(false), mIsRightMouseButtonPressed(false), mIsCenterMouseButtonPressed(false){}
 
 
 	//on button press
@@ -118,6 +85,15 @@ public:
 
 		return core_dispatch::f_event::Continue();
 	}
+
+
+	inline bool IsLeftMousePressed() { return mIsLeftMouseButtonPressed; }
+	inline bool IsMiddleMousePressed() { return mIsRightMouseButtonPressed; }
+	inline bool IsRightMousePressed() { return mIsCenterMouseButtonPressed; }
+
+
+private:
+	bool mIsLeftMouseButtonPressed, mIsRightMouseButtonPressed, mIsCenterMouseButtonPressed;
 };
 TLOC_DEF_TYPE(MouseCallback);
 
@@ -138,10 +114,7 @@ class Assignment2 : public Application
 public:
 	Assignment2() : Application("NEWT | assignment2"),
 		mAngleX(0.0f), mAngleY(0.0f),
-		mScaleX(1.0f), mScaleY(1.0f), mScaleZ(1.0f),
-
-		mIsAltPressed(false), mIsLeftMouseButtonPressed(false), mIsRightMouseButtonPressed(false), mIsCenterMouseButtonPressed(false)
-
+		mScaleX(1.0f), mScaleY(1.0f), mScaleZ(1.0f)
 	{}
 
 	error_type Post_Initialize() override
@@ -172,11 +145,10 @@ public:
 
 
 		//create keyboard and mouse callbacks and register them with their respective HIDs
-		KeyboardCallback keyboardCallback;
-		if (mKeyboard) { mKeyboard->Register(&keyboardCallback); }
+		
 
-		MouseCallback mouseCallback;
-		if (mMouse) { mMouse->Register(&mouseCallback); }
+		
+		if (mMouse) { mMouse->Register(&mMouseCallback); }
 
 
 
@@ -192,6 +164,7 @@ private:
 	input_hid::keyboard_b_vptr  mKeyboard;
 	input_hid::mouse_b_vptr     mMouse;
 
+	MouseCallback mMouseCallback;
 
 
 	//vertices
@@ -217,9 +190,6 @@ private:
 
 	float mAngleX, mAngleY;			 //variables for rotation
 	float mScaleX, mScaleY, mScaleZ;   //variables for scale
-
-	//flags for input
-	bool mIsAltPressed, mIsLeftMouseButtonPressed, mIsRightMouseButtonPressed, mIsCenterMouseButtonPressed;
 
 	//constant to scale cube and keep vertice values clean
 	math_t::Vec3f32 mConstantScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
@@ -345,6 +315,31 @@ private:
 
 		//update input manager
 		mInputManager->Update();
+
+		if (mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::left_alt) || mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::right_alt))
+		{
+			TLOC_LOG_CORE_INFO() <<
+				core_str::Format(" ALT IS PRESSED");
+		}
+
+		if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::left))
+		{
+			TLOC_LOG_CORE_INFO() <<
+				core_str::Format(" LEFT MOUSE IS PRESSED");
+		}
+
+		if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::right))
+		{
+			TLOC_LOG_CORE_INFO() <<
+				core_str::Format(" RIGHT MOUSE IS PRESSED");
+		}
+
+		if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::middle))
+		{
+			TLOC_LOG_CORE_INFO() <<
+				core_str::Format(" MIDDLE MOUSE IS PRESSED");
+		}
+
 
 		//if escape key is pressed, exit program
 		if (mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::escape))

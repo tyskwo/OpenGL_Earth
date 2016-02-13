@@ -162,6 +162,18 @@ public:
 	  mMouse = mInputManager->CreateHID<input_hid::MouseB>();
 
 
+	  //check if there is a mouse and keyboard attached.
+	  TLOC_LOG_CORE_WARN_IF(mKeyboard == nullptr) << "No keyboard detected";
+	  TLOC_LOG_CORE_WARN_IF(mMouse == nullptr) << "No mouse detected";
+
+
+	  //create keyboard and mouse callbacks and register them with their respective HIDs
+	  KeyboardCallback keyboardCallback;
+	  if (mKeyboard) { mKeyboard->Register(&keyboardCallback); }
+
+	  MouseCallback mouseCallback;
+	  if (mMouse) { mMouse->Register(&mouseCallback); }
+
 
 	  return Application::Post_Initialize();
   }

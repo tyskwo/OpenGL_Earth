@@ -29,19 +29,12 @@ namespace {
 	const core_str::String g_assetsPath(GetAssetsPath());
 };
 
-
-
-
-
-
-
-
 //----------------------------------------------------------------------------------
 // MouseCallback
 class MouseCallback
 {
 public:
-	MouseCallback() : mIsLeftMouseButtonPressed(false), mIsRightMouseButtonPressed(false), mIsCenterMouseButtonPressed(false){}
+	MouseCallback(){}
 
 
 	//on button press
@@ -85,26 +78,8 @@ public:
 
 		return core_dispatch::f_event::Continue();
 	}
-
-
-	inline bool IsLeftMousePressed() { return mIsLeftMouseButtonPressed; }
-	inline bool IsMiddleMousePressed() { return mIsRightMouseButtonPressed; }
-	inline bool IsRightMousePressed() { return mIsCenterMouseButtonPressed; }
-
-
-private:
-	bool mIsLeftMouseButtonPressed, mIsRightMouseButtonPressed, mIsCenterMouseButtonPressed;
 };
 TLOC_DEF_TYPE(MouseCallback);
-
-
-
-
-
-
-
-
-
 
 //----------------------------------------------------------------------------------
 // assignment2 
@@ -195,7 +170,32 @@ private:
 	math_t::Vec3f32 mConstantScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
 
 
+	void CheckInput()
+	{
+		//update input manager
+		mInputManager->Update();
 
+		if (mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::left_alt) || mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::right_alt))
+		{
+			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::left))
+			{
+				TLOC_LOG_CORE_INFO() <<
+					core_str::Format(" LEFT MOUSE IS PRESSED");
+			}
+
+			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::right))
+			{
+				TLOC_LOG_CORE_INFO() <<
+					core_str::Format(" RIGHT MOUSE IS PRESSED");
+			}
+
+			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::middle))
+			{
+				TLOC_LOG_CORE_INFO() <<
+					core_str::Format(" MIDDLE MOUSE IS PRESSED");
+			}
+		}
+	}
 
 	void DoRender(sec_type) override
 	{
@@ -313,33 +313,7 @@ private:
 
 		deltaT *= 1;
 
-		//update input manager
-		mInputManager->Update();
-
-		if (mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::left_alt) || mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::right_alt))
-		{
-			TLOC_LOG_CORE_INFO() <<
-				core_str::Format(" ALT IS PRESSED");
-		}
-
-		if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::left))
-		{
-			TLOC_LOG_CORE_INFO() <<
-				core_str::Format(" LEFT MOUSE IS PRESSED");
-		}
-
-		if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::right))
-		{
-			TLOC_LOG_CORE_INFO() <<
-				core_str::Format(" RIGHT MOUSE IS PRESSED");
-		}
-
-		if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::middle))
-		{
-			TLOC_LOG_CORE_INFO() <<
-				core_str::Format(" MIDDLE MOUSE IS PRESSED");
-		}
-
+		CheckInput();
 
 		//if escape key is pressed, exit program
 		if (mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::escape))

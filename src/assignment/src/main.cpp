@@ -30,59 +30,11 @@ namespace {
 	const core_str::String g_assetsPath(GetAssetsPath());
 };
 
+
+
 typedef std::vector<math_t::Vec3f32> VertexList;
 
-//----------------------------------------------------------------------------------
-// MouseCallback
-class MouseCallback
-{
-public:
-	MouseCallback(){}
 
-
-	//on button press
-	core_dispatch::Event OnMouseButtonPress(const tl_size a_caller, 
-											const input_hid::MouseEvent&, 
-											const input_hid::MouseEvent::button_code_type a_button)
-	{
-		TLOC_LOG_CORE_INFO() <<
-			core_str::Format("Caller %i pushed a button. Button state is: %i",
-			(tl_int)a_caller, a_button);
-
-		return core_dispatch::f_event::Continue();
-	}
-
-
-	//on button release
-	core_dispatch::Event OnMouseButtonRelease(const tl_size a_caller, 
-											  const input_hid::MouseEvent&, 
-											  const input_hid::MouseEvent::button_code_type a_button)
-	{
-		TLOC_LOG_CORE_INFO() <<
-			core_str::Format("Caller %i released a button. Button state is %i",
-			(tl_int)a_caller, a_button);
-
-		return core_dispatch::f_event::Continue();
-	}
-
-
-	//on mouse movement
-	core_dispatch::Event OnMouseMove(const tl_size a_caller, const input_hid::MouseEvent& a_event)
-	{
-		TLOC_LOG_CORE_INFO() <<
-			core_str::Format("Caller %i moved the mouse by %i %i %i ", (tl_int)a_caller,
-			a_event.m_X.m_rel,
-			a_event.m_Y.m_rel,
-			a_event.m_Z.m_rel)
-			<<
-			core_str::Format(" to %i %i %i", a_event.m_X.m_abs,
-			a_event.m_Y.m_abs,
-			a_event.m_Z.m_abs);
-
-		return core_dispatch::f_event::Continue();
-	}
-};
-TLOC_DEF_TYPE(MouseCallback);
 
 //----------------------------------------------------------------------------------
 // assignment2 
@@ -92,9 +44,9 @@ class Assignment2 : public Application
 public:
 	Assignment2() : Application("NEWT | assignment2"),
 		mAngleX(0.0f), mAngleY(0.0f),
-		mZoomed(false),
-		mScaleFactor(mBaseScaleFactor),
-		mPreviousMousePos(0.0f, 0.0f)
+		mZoomFactor(0.0f),
+		mTranslation(0.0f, 0.0f, 0.0f),
+		mScaleFactor(mBaseScaleFactor)
 	{
 		vertices.push_back(math_t::Vec3f32(-1,  1, -1));
 		vertices.push_back(math_t::Vec3f32(-1, -1, -1));
@@ -122,19 +74,14 @@ public:
 		params.m_param1 = this->GetWindow()->GetWindowHandle();
 
 		mInputManager = core_sptr::MakeShared<input::InputManagerB>(params);
-		mKeyboard = mInputManager->CreateHID<input_hid::KeyboardB>();
-		mMouse = mInputManager->CreateHID<input_hid::MouseB>();
+		mKeyboard	  = mInputManager->CreateHID<input_hid::KeyboardB>();
+		mMouse	      = mInputManager->CreateHID<input_hid::MouseB>();
 
 
 
 		//check if there is a mouse and keyboard attached.
 		TLOC_LOG_CORE_WARN_IF(mKeyboard == nullptr) << "No keyboard detected";
 		TLOC_LOG_CORE_WARN_IF(mMouse    == nullptr) << "No mouse detected";
-
-
-
-		//register mouse callback
-		if (mMouse) { mMouse->Register(&mMouseCallback); }
 
 
 
@@ -150,8 +97,6 @@ private:
 	input_hid::keyboard_b_vptr  mKeyboard;
 	input_hid::mouse_b_vptr     mMouse;
 
-	MouseCallback mMouseCallback;
-
 	//vertices
 	VertexList vertices;
 
@@ -163,74 +108,21 @@ private:
 					b = math_t::Vec3f32(0.1f, 0.2f, 0.9f),
 					p = math_t::Vec3f32(0.7f, 0.1f, 0.9f);
 
-	math_t::Vec2f mPreviousMousePos;
 
-	float mAngleX, mAngleY;			 //variables for rotation
-	bool mZoomed;
+	//cube movement variables
+	float			mAngleX, mAngleY; //variables for rotation
+	float			mZoomFactor;	  //variable  for zoom
+	math_t::Vec3f32 mTranslation;	  //variable  for translation
 
 
 	
 	//constant to scale cube and keep vertice values clean
 	 math_t::Vec3f32 mBaseScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
 
-	//variales for Zoom scale
-	 math_t::Vec3f32 mZoomScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
-
 	//variable for current scale values
 	math_t::Vec3f32 mScaleFactor;
 
-	void CheckInput()
-	{
-		//update input manager
-		mInputManager->Update();
-
-		input_hid::MouseEvent currentMouseState = mMouse->GetState();
-
-		if (mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::left_control) || mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::right_control))
-		{
-			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::left))
-			{
-				/*tl_float xScaled = core_utils::CastNumber<tl_float>
-					(currentMouseState.m_X.m_abs);
-				tl_float yScaled = core_utils::CastNumber<tl_float>
-					(currentMouseState.m_Y.m_abs);
-
-				xScaled /= core_utils::CastNumber<tl_float>(mWidth);
-				yScaled /= core_utils::CastNumber<tl_float>(mHeight);
-
-				xScaled = (xScaled * 2) - 1;
-				yScaled = (yScaled * 2) - 1;
-
-				// mouse co-ords start from top-left, OpenGL from bottom-left
-				yScaled *= -1;*/
-
-
-				TLOC_LOG_CORE_INFO() <<
-					core_str::Format(" LEFT MOUSE IS PRESSED");
-			}
-
-			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::right))
-			{
-				TLOC_LOG_CORE_INFO() <<
-					core_str::Format(" RIGHT MOUSE IS PRESSED");
-			}
-
-			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::middle))
-			{
-				if (mZoomed)
-				{
-					mScaleFactor -= mZoomScaleFactor;
-				}
-				else
-				{
-					mScaleFactor += mZoomScaleFactor;
-				}
-
-				//toggle zoom
-				mZoomed = !mZoomed;
-			}
-		}
-	}
+	
 
 	void DoRender(sec_type) override
 	{
@@ -244,21 +136,20 @@ private:
 
 
 
-		//aspect ratio
+		//get aspect ratio
 		const float aspectRatio = core_utils::CastNumber<float>(GetWindow()->GetWidth()) / core_utils::CastNumber<float>(GetWindow()->GetHeight());
 		
 
-	//will be moved and changed
-		//showing the ability to scale
-		glScalef(mScaleFactor[0] * 1.0f / aspectRatio, mScaleFactor[1], mScaleFactor[2]);
+		//translate cube
+		glTranslatef(mTranslation[0], mTranslation[1], 0.0f);
 
-		//showing the ability to rotate
-		glRotatef(mAngleY++, 0, 1, 0); //rotate around the y axis
-		glRotatef(mAngleX++, 1, 0, 0); //rotate around the x axis
-		mAngleX++; //make it rotate on x axis twice as fast
-	//-----
+		//change scale
+		glScalef((mScaleFactor[0] + mZoomFactor) * 1.0f / aspectRatio, mScaleFactor[1] + mZoomFactor, mScaleFactor[2] + mZoomFactor);
 
-
+		//change rotation
+		glRotatef(mAngleY, 0, 1, 0); //rotate around the y axis
+		glRotatef(mAngleX, 1, 0, 0); //rotate around the x axis
+	
 
 
 
@@ -342,12 +233,18 @@ private:
 		glEnd();
 	}
 
-	void DoUpdate(sec_type a_deltaT) override
+
+
+
+	
+	//--------------------------------------------------------------------------------
+	// called each update
+	void DoUpdate(sec_type) override
 	{
-		sec_type deltaT = a_deltaT;
+		//because we need to reference formal parameters.
+		//sec_type deltaT = a_deltaT; deltaT *= 1;
 
-		deltaT *= 1;
-
+		//check input from HIDs
 		CheckInput();
 
 		//if escape key is pressed, exit program
@@ -356,9 +253,60 @@ private:
 			exit(0);
 		}
 	}
+
+
+
+
+
+	//--------------------------------------------------------------------------------
+	// receive update events, and change values accordingly
+	void CheckInput()
+	{
+		//update input manager
+		mInputManager->Update();
+
+		//get current mouse state
+		input_hid::MouseEvent currentMouseState = mMouse->GetState();
+
+		//check to see if either of the control buttons are pressed
+		if (mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::left_control) || 
+			mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::right_control))
+		{
+			//left mouse button --- rotate
+			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::left))
+			{
+				mAngleX -= core_utils::CastNumber<tl_float>(currentMouseState.m_Y.m_rel);
+				mAngleY -= core_utils::CastNumber<tl_float>(currentMouseState.m_X.m_rel);
+			}
+
+			//right mouse button --- zoom
+			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::right))
+			{
+				mZoomFactor -= core_utils::CastNumber<tl_float>(currentMouseState.m_Y.m_rel) / 100.0f;
+
+				//check to make sure we're not negatively scaled.
+				if (mZoomFactor <= -mBaseScaleFactor[0]) mZoomFactor = -mBaseScaleFactor[0] + 0.01f;
+			}
+
+			//middle mouse button --- translate
+			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::middle))
+			{
+				mTranslation[0] += core_utils::CastNumber<tl_float>(currentMouseState.m_X.m_rel) / 100.0f;
+				mTranslation[1] -= core_utils::CastNumber<tl_float>(currentMouseState.m_Y.m_rel) / 100.0f;
+			}
+		}
+	}
 };
 
+
+
+
+
 // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+
+
+
 
 int TLOC_MAIN(int , char *[])
 {

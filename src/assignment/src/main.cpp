@@ -4,11 +4,16 @@
 #include <tlocPrefab/tloc_prefab.h>
 #include <tlocApplication/tloc_application.h>
 #include <tlocInput/tloc_input.h>
-#include <vector>
+
 #include <gameAssetsPath.h>
+
 #include <memory>
+#include <vector>
+
+
 
 using namespace tloc;
+
 
 
 //----------------------------------------------------------------------------------
@@ -31,7 +36,7 @@ namespace {
 };
 
 
-
+//tyepdef for vertex list
 typedef std::vector<math_t::Vec3f32> VertexList;
 
 
@@ -83,6 +88,9 @@ public:
 		TLOC_LOG_CORE_WARN_IF(mKeyboard == nullptr) << "No keyboard detected";
 		TLOC_LOG_CORE_WARN_IF(mMouse    == nullptr) << "No mouse detected";
 
+		//set aspect ratio for correct perspective
+		mWindowAspectRatio = core_utils::CastNumber<float>(GetWindow()->GetWidth()) / core_utils::CastNumber<float>(GetWindow()->GetHeight());
+
 
 
 		return Application::Post_Initialize();
@@ -122,8 +130,15 @@ private:
 	//variable for current scale values
 	math_t::Vec3f32 mScaleFactor;
 
-	
 
+	//value for aspect ratio of the window
+	float mWindowAspectRatio;
+
+
+
+
+	//--------------------------------------------------------------------------------
+	// called each render call
 	void DoRender(sec_type) override
 	{
 		//apply background/clear color
@@ -135,16 +150,11 @@ private:
 
 
 
-
-		//get aspect ratio
-		const float aspectRatio = core_utils::CastNumber<float>(GetWindow()->GetWidth()) / core_utils::CastNumber<float>(GetWindow()->GetHeight());
-		
-
 		//translate cube
 		glTranslatef(mTranslation[0], mTranslation[1], 0.0f);
 
 		//change scale
-		glScalef((mScaleFactor[0] + mZoomFactor) * 1.0f / aspectRatio, mScaleFactor[1] + mZoomFactor, mScaleFactor[2] + mZoomFactor);
+		glScalef((mScaleFactor[0] + mZoomFactor) * 1.0f / mWindowAspectRatio, mScaleFactor[1] + mZoomFactor, mScaleFactor[2] + mZoomFactor);
 
 		//change rotation
 		glRotatef(mAngleY, 0, 1, 0); //rotate around the y axis
@@ -241,9 +251,6 @@ private:
 	// called each update
 	void DoUpdate(sec_type) override
 	{
-		//because we need to reference formal parameters.
-		//sec_type deltaT = a_deltaT; deltaT *= 1;
-
 		//check input from HIDs
 		CheckInput();
 
@@ -293,6 +300,14 @@ private:
 			{
 				mTranslation[0] += core_utils::CastNumber<tl_float>(currentMouseState.m_X.m_rel) / 100.0f;
 				mTranslation[1] -= core_utils::CastNumber<tl_float>(currentMouseState.m_Y.m_rel) / 100.0f;
+
+
+				//bounds checking
+				if (mTranslation[0] < -1.0f) mTranslation[0] = -1.0f;
+				if (mTranslation[0] >  1.0f) mTranslation[0] =  1.0f;
+
+				if (mTranslation[1] < -1.0f) mTranslation[1] = -1.0f;
+				if (mTranslation[1] >  1.0f) mTranslation[1] =  1.0f;
 			}
 		}
 	}

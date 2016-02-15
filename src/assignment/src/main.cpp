@@ -4,8 +4,9 @@
 #include <tlocPrefab/tloc_prefab.h>
 #include <tlocApplication/tloc_application.h>
 #include <tlocInput/tloc_input.h>
-
+#include <vector>
 #include <gameAssetsPath.h>
+#include <memory>
 
 using namespace tloc;
 
@@ -28,6 +29,8 @@ namespace {
 
 	const core_str::String g_assetsPath(GetAssetsPath());
 };
+
+typedef std::vector<math_t::Vec3f32> VertexList;
 
 //----------------------------------------------------------------------------------
 // MouseCallback
@@ -89,8 +92,19 @@ class Assignment2 : public Application
 public:
 	Assignment2() : Application("NEWT | assignment2"),
 		mAngleX(0.0f), mAngleY(0.0f),
-		mScaleX(1.0f), mScaleY(1.0f), mScaleZ(1.0f)
-	{}
+		mZoomed(false),
+		mScaleFactor(mBaseScaleFactor),
+		mPreviousMousePos(0.0f, 0.0f)
+	{
+		verteces.push_back(math_t::Vec3f32(-1, 1, -1));
+		verteces.push_back(math_t::Vec3f32(-1, -1, -1));
+		verteces.push_back(math_t::Vec3f32(1, -1, -1));
+		verteces.push_back(math_t::Vec3f32(1, 1, -1));
+		verteces.push_back(math_t::Vec3f32(-1, 1, 1));
+		verteces.push_back(math_t::Vec3f32(1, 1, 1));
+		verteces.push_back(math_t::Vec3f32(1, -1, 1));
+		verteces.push_back(math_t::Vec3f32(-1, -1, 1));
+	}
 
 	error_type Post_Initialize() override
 	{
@@ -141,17 +155,8 @@ private:
 
 	MouseCallback mMouseCallback;
 
-
 	//vertices
-	math_t::Vec3f32 v1 = math_t::Vec3f32(-1,  1, -1),
-					v2 = math_t::Vec3f32(-1, -1, -1),
-					v3 = math_t::Vec3f32( 1, -1, -1),
-					v4 = math_t::Vec3f32( 1,  1, -1),
-					v5 = math_t::Vec3f32(-1,  1,  1),
-					v6 = math_t::Vec3f32( 1,  1,  1),
-					v7 = math_t::Vec3f32( 1, -1,  1),
-					v8 = math_t::Vec3f32(-1, -1,  1);
-
+	VertexList verteces;
 
 	//colors
 	math_t::Vec3f32 r = math_t::Vec3f32(0.9f, 0.1f, 0.2f),
@@ -161,24 +166,53 @@ private:
 					b = math_t::Vec3f32(0.1f, 0.2f, 0.9f),
 					p = math_t::Vec3f32(0.7f, 0.1f, 0.9f);
 
-
+	math_t::Vec2f mPreviousMousePos;
 
 	float mAngleX, mAngleY;			 //variables for rotation
-	float mScaleX, mScaleY, mScaleZ;   //variables for scale
+	bool mZoomed;
+
+
+	
+	//variables for screen resoultion
+	//float mWidth = core_utils::CastNumber<float>(GetWindow()->GetWidth());
+	//float mHeight = core_utils::CastNumber<float>(GetWindow()->GetHeight());
+	//float aspectRatio =  mWidth / mHeight;
 
 	//constant to scale cube and keep vertice values clean
-	math_t::Vec3f32 mConstantScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
+	 math_t::Vec3f32 mBaseScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
 
+	//variales for Zoom scale
+	 math_t::Vec3f32 mZoomScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
+
+	//variable for current scale values
+	math_t::Vec3f32 mScaleFactor;
 
 	void CheckInput()
 	{
 		//update input manager
 		mInputManager->Update();
 
-		if (mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::left_alt) || mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::right_alt))
+		input_hid::MouseEvent currentMouseState = mMouse->GetState();
+
+		if (mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::left_control) || mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::right_control))
 		{
 			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::left))
 			{
+				/*tl_float xScaled = core_utils::CastNumber<tl_float>
+					(currentMouseState.m_X.m_abs);
+				tl_float yScaled = core_utils::CastNumber<tl_float>
+					(currentMouseState.m_Y.m_abs);
+
+				xScaled /= core_utils::CastNumber<tl_float>(mWidth);
+				yScaled /= core_utils::CastNumber<tl_float>(mHeight);
+
+				xScaled = (xScaled * 2) - 1;
+				yScaled = (yScaled * 2) - 1;
+
+				// mouse co-ords start from top-left, OpenGL from bottom-left
+				yScaled *= -1;*/
+
+
 				TLOC_LOG_CORE_INFO() <<
 					core_str::Format(" LEFT MOUSE IS PRESSED");
 			}
@@ -191,8 +225,17 @@ private:
 
 			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::middle))
 			{
-				TLOC_LOG_CORE_INFO() <<
-					core_str::Format(" MIDDLE MOUSE IS PRESSED");
+				if (mZoomed)
+				{
+					mScaleFactor -= mZoomScaleFactor;
+				}
+				else
+				{
+					mScaleFactor += mZoomScaleFactor;
+				}
+
+				//toggle zoom
+				mZoomed = !mZoomed;
 			}
 		}
 	}
@@ -215,7 +258,7 @@ private:
 
 	//will be moved and changed
 		//showing the ability to scale
-		glScalef(mConstantScaleFactor[0] * 1.0f / aspectRatio, mConstantScaleFactor[1], mConstantScaleFactor[2]);
+		glScalef(mScaleFactor[0] * 1.0f / aspectRatio, mScaleFactor[1], mScaleFactor[2]);
 
 		//showing the ability to rotate
 		glRotatef(mAngleY++, 0, 1, 0); //rotate around the y axis
@@ -233,73 +276,73 @@ private:
 			//---------------------
 			// blue side
 			glColor3fv(  b.data());
-			glVertex3fv(v1.data());
-			glVertex3fv(v2.data());
-			glVertex3fv(v4.data());
+			glVertex3fv(verteces[0].data());
+			glVertex3fv(verteces[1].data());
+			glVertex3fv(verteces[3].data());
 
-			glVertex3fv(v2.data());
-			glVertex3fv(v3.data());
-			glVertex3fv(v4.data());
+			glVertex3fv(verteces[1].data());
+			glVertex3fv(verteces[2].data());
+			glVertex3fv(verteces[3].data());
 			//---------------------
 
 			//---------------------
 			// red side
 			glColor3fv(  r.data());
-			glVertex3fv(v5.data());
-			glVertex3fv(v6.data());
-			glVertex3fv(v8.data());
+			glVertex3fv(verteces[4].data());
+			glVertex3fv(verteces[5].data());
+			glVertex3fv(verteces[7].data());
 
-			glVertex3fv(v6.data());
-			glVertex3fv(v7.data());
-			glVertex3fv(v8.data());
+			glVertex3fv(verteces[5].data());
+			glVertex3fv(verteces[6].data());
+			glVertex3fv(verteces[7].data());
 			//---------------------
 
 			//---------------------
 			// green side
 			glColor3fv(  g.data());
-			glVertex3fv(v4.data());
-			glVertex3fv(v3.data());
-			glVertex3fv(v6.data());
+			glVertex3fv(verteces[3].data());
+			glVertex3fv(verteces[2].data());
+			glVertex3fv(verteces[5].data());
 
-			glVertex3fv(v3.data());
-			glVertex3fv(v7.data());
-			glVertex3fv(v6.data());
+			glVertex3fv(verteces[2].data());
+			glVertex3fv(verteces[6].data());
+			glVertex3fv(verteces[5].data());
 			//---------------------
 
 			//---------------------
 			// yellow side
 			glColor3fv(  y.data());
-			glVertex3fv(v1.data());
-			glVertex3fv(v5.data());
-			glVertex3fv(v8.data());
+			glVertex3fv(verteces[0].data());
+			glVertex3fv(verteces[4].data());
+			glVertex3fv(verteces[7].data());
 
-			glVertex3fv(v1.data());
-			glVertex3fv(v8.data());
-			glVertex3fv(v2.data());
+			glVertex3fv(verteces[0].data());
+			glVertex3fv(verteces[7].data());
+			glVertex3fv(verteces[1].data());
 			//---------------------
 
 			//---------------------
 			// orange side
 			glColor3fv(  o.data());
-			glVertex3fv(v1.data());
-			glVertex3fv(v4.data());
-			glVertex3fv(v5.data());
+			glVertex3fv(verteces[0].data());
+			glVertex3fv(verteces[3].data());
+			glVertex3fv(verteces[4].data());
 
-			glVertex3fv(v5.data());
-			glVertex3fv(v4.data());
-			glVertex3fv(v6.data());
+			glVertex3fv(verteces[4].data());
+			glVertex3fv(verteces[3].data());
+			glVertex3fv(verteces[5].data());
 			//---------------------
 
 			//---------------------
 			// purple side
 			glColor3fv(  p.data());
-			glVertex3fv(v2.data());
-			glVertex3fv(v8.data());
-			glVertex3fv(v3.data());
+			glVertex3fv(verteces[1].data());
+			glVertex3fv(verteces[7].data());
+			glVertex3fv(verteces[2].data());
 
-			glVertex3fv(v7.data());
-			glVertex3fv(v3.data());
-			glVertex3fv(v8.data());
+			glVertex3fv(verteces[6].data());
+			glVertex3fv(verteces[2].data());
+			glVertex3fv(verteces[7].data());
 			//---------------------
 		}
 

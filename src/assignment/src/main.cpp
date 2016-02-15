@@ -37,7 +37,34 @@ typedef std::vector<math_t::Vec3f32> VertexList;
 class MouseCallback
 {
 public:
-	MouseCallback() {}
+	MouseCallback(){}
+
+
+	//on button press
+	core_dispatch::Event OnMouseButtonPress(const tl_size a_caller, 
+											const input_hid::MouseEvent&, 
+											const input_hid::MouseEvent::button_code_type a_button)
+	{
+		TLOC_LOG_CORE_INFO() <<
+			core_str::Format("Caller %i pushed a button. Button state is: %i",
+			(tl_int)a_caller, a_button);
+
+		return core_dispatch::f_event::Continue();
+	}
+
+
+	//on button release
+	core_dispatch::Event OnMouseButtonRelease(const tl_size a_caller, 
+											  const input_hid::MouseEvent&, 
+											  const input_hid::MouseEvent::button_code_type a_button)
+	{
+		TLOC_LOG_CORE_INFO() <<
+			core_str::Format("Caller %i released a button. Button state is %i",
+			(tl_int)a_caller, a_button);
+
+		return core_dispatch::f_event::Continue();
+	}
+
 
 	//on mouse movement
 	core_dispatch::Event OnMouseMove(const tl_size a_caller, const input_hid::MouseEvent& a_event)
@@ -143,9 +170,6 @@ private:
 
 
 	
-	//aspect ratio
-	const float aspectRatio = core_utils::CastNumber<float>(GetWindow()->GetWidth()) / core_utils::CastNumber<float>(GetWindow()->GetHeight());
-
 	//constant to scale cube and keep vertice values clean
 	 math_t::Vec3f32 mBaseScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
 
@@ -154,10 +178,6 @@ private:
 
 	//variable for current scale values
 	math_t::Vec3f32 mScaleFactor;
-
-
-
-
 
 	void CheckInput()
 	{
@@ -212,9 +232,6 @@ private:
 		}
 	}
 
-
-
-
 	void DoRender(sec_type) override
 	{
 		//apply background/clear color
@@ -227,7 +244,8 @@ private:
 
 
 
-	//move this
+		//aspect ratio
+		const float aspectRatio = core_utils::CastNumber<float>(GetWindow()->GetWidth()) / core_utils::CastNumber<float>(GetWindow()->GetHeight());
 		
 
 	//will be moved and changed
@@ -323,9 +341,6 @@ private:
 		//end the gl call.
 		glEnd();
 	}
-
-
-
 
 	void DoUpdate(sec_type a_deltaT) override
 	{

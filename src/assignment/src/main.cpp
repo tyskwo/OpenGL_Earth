@@ -37,34 +37,7 @@ typedef std::vector<math_t::Vec3f32> VertexList;
 class MouseCallback
 {
 public:
-	MouseCallback(){}
-
-
-	//on button press
-	core_dispatch::Event OnMouseButtonPress(const tl_size a_caller, 
-											const input_hid::MouseEvent&, 
-											const input_hid::MouseEvent::button_code_type a_button)
-	{
-		TLOC_LOG_CORE_INFO() <<
-			core_str::Format("Caller %i pushed a button. Button state is: %i",
-			(tl_int)a_caller, a_button);
-
-		return core_dispatch::f_event::Continue();
-	}
-
-
-	//on button release
-	core_dispatch::Event OnMouseButtonRelease(const tl_size a_caller, 
-											  const input_hid::MouseEvent&, 
-											  const input_hid::MouseEvent::button_code_type a_button)
-	{
-		TLOC_LOG_CORE_INFO() <<
-			core_str::Format("Caller %i released a button. Button state is %i",
-			(tl_int)a_caller, a_button);
-
-		return core_dispatch::f_event::Continue();
-	}
-
+	MouseCallback() {}
 
 	//on mouse movement
 	core_dispatch::Event OnMouseMove(const tl_size a_caller, const input_hid::MouseEvent& a_event)
@@ -96,14 +69,14 @@ public:
 		mScaleFactor(mBaseScaleFactor),
 		mPreviousMousePos(0.0f, 0.0f)
 	{
-		verteces.push_back(math_t::Vec3f32(-1, 1, -1));
-		verteces.push_back(math_t::Vec3f32(-1, -1, -1));
-		verteces.push_back(math_t::Vec3f32(1, -1, -1));
-		verteces.push_back(math_t::Vec3f32(1, 1, -1));
-		verteces.push_back(math_t::Vec3f32(-1, 1, 1));
-		verteces.push_back(math_t::Vec3f32(1, 1, 1));
-		verteces.push_back(math_t::Vec3f32(1, -1, 1));
-		verteces.push_back(math_t::Vec3f32(-1, -1, 1));
+		vertices.push_back(math_t::Vec3f32(-1,  1, -1));
+		vertices.push_back(math_t::Vec3f32(-1, -1, -1));
+		vertices.push_back(math_t::Vec3f32( 1, -1, -1));
+		vertices.push_back(math_t::Vec3f32( 1,  1, -1));
+		vertices.push_back(math_t::Vec3f32(-1,  1,  1));
+		vertices.push_back(math_t::Vec3f32( 1,  1,  1));
+		vertices.push_back(math_t::Vec3f32( 1, -1,  1));
+		vertices.push_back(math_t::Vec3f32(-1, -1,  1));
 	}
 
 	error_type Post_Initialize() override
@@ -129,14 +102,11 @@ public:
 
 		//check if there is a mouse and keyboard attached.
 		TLOC_LOG_CORE_WARN_IF(mKeyboard == nullptr) << "No keyboard detected";
-		TLOC_LOG_CORE_WARN_IF(mMouse == nullptr) << "No mouse detected";
+		TLOC_LOG_CORE_WARN_IF(mMouse    == nullptr) << "No mouse detected";
 
 
 
-		//create keyboard and mouse callbacks and register them with their respective HIDs
-		
-
-		
+		//register mouse callback
 		if (mMouse) { mMouse->Register(&mMouseCallback); }
 
 
@@ -156,7 +126,7 @@ private:
 	MouseCallback mMouseCallback;
 
 	//vertices
-	VertexList verteces;
+	VertexList vertices;
 
 	//colors
 	math_t::Vec3f32 r = math_t::Vec3f32(0.9f, 0.1f, 0.2f),
@@ -173,10 +143,8 @@ private:
 
 
 	
-	//variables for screen resoultion
-	//float mWidth = core_utils::CastNumber<float>(GetWindow()->GetWidth());
-	//float mHeight = core_utils::CastNumber<float>(GetWindow()->GetHeight());
-	//float aspectRatio =  mWidth / mHeight;
+	//aspect ratio
+	const float aspectRatio = core_utils::CastNumber<float>(GetWindow()->GetWidth()) / core_utils::CastNumber<float>(GetWindow()->GetHeight());
 
 	//constant to scale cube and keep vertice values clean
 	 math_t::Vec3f32 mBaseScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
@@ -186,6 +154,10 @@ private:
 
 	//variable for current scale values
 	math_t::Vec3f32 mScaleFactor;
+
+
+
+
 
 	void CheckInput()
 	{
@@ -240,6 +212,9 @@ private:
 		}
 	}
 
+
+
+
 	void DoRender(sec_type) override
 	{
 		//apply background/clear color
@@ -253,8 +228,7 @@ private:
 
 
 	//move this
-		//get aspect ratio of window
-		const float aspectRatio = core_utils::CastNumber<float>(GetWindow()->GetWidth()) / core_utils::CastNumber<float>(GetWindow()->GetHeight());
+		
 
 	//will be moved and changed
 		//showing the ability to scale
@@ -276,79 +250,82 @@ private:
 			//---------------------
 			// blue side
 			glColor3fv(  b.data());
-			glVertex3fv(verteces[0].data());
-			glVertex3fv(verteces[1].data());
-			glVertex3fv(verteces[3].data());
+			glVertex3fv(vertices[0].data());
+			glVertex3fv(vertices[1].data());
+			glVertex3fv(vertices[3].data());
 
-			glVertex3fv(verteces[1].data());
-			glVertex3fv(verteces[2].data());
-			glVertex3fv(verteces[3].data());
+			glVertex3fv(vertices[1].data());
+			glVertex3fv(vertices[2].data());
+			glVertex3fv(vertices[3].data());
 			//---------------------
 
 			//---------------------
 			// red side
 			glColor3fv(  r.data());
-			glVertex3fv(verteces[4].data());
-			glVertex3fv(verteces[5].data());
-			glVertex3fv(verteces[7].data());
+			glVertex3fv(vertices[4].data());
+			glVertex3fv(vertices[5].data());
+			glVertex3fv(vertices[7].data());
 
-			glVertex3fv(verteces[5].data());
-			glVertex3fv(verteces[6].data());
-			glVertex3fv(verteces[7].data());
+			glVertex3fv(vertices[5].data());
+			glVertex3fv(vertices[6].data());
+			glVertex3fv(vertices[7].data());
 			//---------------------
 
 			//---------------------
 			// green side
 			glColor3fv(  g.data());
-			glVertex3fv(verteces[3].data());
-			glVertex3fv(verteces[2].data());
-			glVertex3fv(verteces[5].data());
+			glVertex3fv(vertices[3].data());
+			glVertex3fv(vertices[2].data());
+			glVertex3fv(vertices[5].data());
 
-			glVertex3fv(verteces[2].data());
-			glVertex3fv(verteces[6].data());
-			glVertex3fv(verteces[5].data());
+			glVertex3fv(vertices[2].data());
+			glVertex3fv(vertices[6].data());
+			glVertex3fv(vertices[5].data());
 			//---------------------
 
 			//---------------------
 			// yellow side
 			glColor3fv(  y.data());
-			glVertex3fv(verteces[0].data());
-			glVertex3fv(verteces[4].data());
-			glVertex3fv(verteces[7].data());
+			glVertex3fv(vertices[0].data());
+			glVertex3fv(vertices[4].data());
+			glVertex3fv(vertices[7].data());
 
-			glVertex3fv(verteces[0].data());
-			glVertex3fv(verteces[7].data());
-			glVertex3fv(verteces[1].data());
+			glVertex3fv(vertices[0].data());
+			glVertex3fv(vertices[7].data());
+			glVertex3fv(vertices[1].data());
 			//---------------------
 
 			//---------------------
 			// orange side
 			glColor3fv(  o.data());
-			glVertex3fv(verteces[0].data());
-			glVertex3fv(verteces[3].data());
-			glVertex3fv(verteces[4].data());
+			glVertex3fv(vertices[0].data());
+			glVertex3fv(vertices[3].data());
+			glVertex3fv(vertices[4].data());
 
-			glVertex3fv(verteces[4].data());
-			glVertex3fv(verteces[3].data());
-			glVertex3fv(verteces[5].data());
+			glVertex3fv(vertices[4].data());
+			glVertex3fv(vertices[3].data());
+			glVertex3fv(vertices[5].data());
 			//---------------------
 
 			//---------------------
 			// purple side
 			glColor3fv(  p.data());
-			glVertex3fv(verteces[1].data());
-			glVertex3fv(verteces[7].data());
-			glVertex3fv(verteces[2].data());
+			glVertex3fv(vertices[1].data());
+			glVertex3fv(vertices[7].data());
+			glVertex3fv(vertices[2].data());
 
-			glVertex3fv(verteces[6].data());
-			glVertex3fv(verteces[2].data());
-			glVertex3fv(verteces[7].data());
+			glVertex3fv(vertices[6].data());
+			glVertex3fv(vertices[2].data());
+			glVertex3fv(vertices[7].data());
 			//---------------------
 		}
 
 		//end the gl call.
 		glEnd();
 	}
+
+
+
 
 	void DoUpdate(sec_type a_deltaT) override
 	{

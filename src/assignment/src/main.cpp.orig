@@ -4,12 +4,15 @@
 #include <tlocPrefab/tloc_prefab.h>
 #include <tlocApplication/tloc_application.h>
 #include <tlocInput/tloc_input.h>
-
+#include <vector>
 #include <gameAssetsPath.h>
+#include <memory>
 
 using namespace tloc;
 
-//shader paths
+
+//----------------------------------------------------------------------------------
+// shader paths
 namespace {
 
 #if defined (TLOC_OS_WIN)
@@ -24,147 +27,122 @@ namespace {
     core_str::String shaderPathFS("/shaders/tlocOneTextureFS_gl_es_2_0.glsl");
 #endif
 
-  const core_str::String g_assetsPath(GetAssetsPath());
-
+	const core_str::String g_assetsPath(GetAssetsPath());
 };
 
+typedef std::vector<math_t::Vec3f32> VertexList;
 
-
-//------------------------------------------------------------------------
-// KeyboardCallback
-
-class KeyboardCallback
-{
-public:
-	KeyboardCallback() {}
-
-	// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-	core_dispatch::Event
-		OnKeyPress(const tl_size a_caller,
-		const input_hid::KeyboardEvent& a_event)
-	{
-			TLOC_LOG_CORE_INFO() <<
-				core_str::Format("Caller %i pressed a key. Key code is: %i",
-				(tl_int)a_caller, a_event.m_keyCode);
-
-			return core_dispatch::f_event::Continue();
-		}
-
-	// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-	core_dispatch::Event
-		OnKeyRelease(const tl_size a_caller,
-		const input_hid::KeyboardEvent& a_event)
-	{
-			TLOC_LOG_CORE_INFO() <<
-				core_str::Format("Caller %i released a key. Key code is %i",
-				(tl_int)a_caller, a_event.m_keyCode);
-
-			return core_dispatch::f_event::Continue();
-		}
-};
-TLOC_DEF_TYPE(KeyboardCallback);
-
-//------------------------------------------------------------------------
+//----------------------------------------------------------------------------------
 // MouseCallback
-
 class MouseCallback
 {
 public:
-	MouseCallback()
-	{ }
+	MouseCallback(){}
 
-	// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-	core_dispatch::Event
-		OnMouseButtonPress(const tl_size a_caller,
-		const input_hid::MouseEvent&,
-		const input_hid::MouseEvent::button_code_type a_button)
+	//on button press
+	core_dispatch::Event OnMouseButtonPress(const tl_size a_caller, 
+											const input_hid::MouseEvent&, 
+											const input_hid::MouseEvent::button_code_type a_button)
 	{
-			TLOC_LOG_CORE_INFO() <<
-				core_str::Format("Caller %i pushed a button. Button state is: %i",
-				(tl_int)a_caller, a_button);
+		TLOC_LOG_CORE_INFO() <<
+			core_str::Format("Caller %i pushed a button. Button state is: %i",
+			(tl_int)a_caller, a_button);
 
-			return core_dispatch::f_event::Continue();
-		}
+		return core_dispatch::f_event::Continue();
+	}
 
-	// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-	core_dispatch::Event
-		OnMouseButtonRelease(const tl_size a_caller,
-		const input_hid::MouseEvent&,
-		const input_hid::MouseEvent::button_code_type a_button)
+	//on button release
+	core_dispatch::Event OnMouseButtonRelease(const tl_size a_caller, 
+											  const input_hid::MouseEvent&, 
+											  const input_hid::MouseEvent::button_code_type a_button)
 	{
-			TLOC_LOG_CORE_INFO() <<
-				core_str::Format("Caller %i released a button. Button state is %i",
-				(tl_int)a_caller, a_button);
+		TLOC_LOG_CORE_INFO() <<
+			core_str::Format("Caller %i released a button. Button state is %i",
+			(tl_int)a_caller, a_button);
 
-			return core_dispatch::f_event::Continue();
-		}
+		return core_dispatch::f_event::Continue();
+	}
 
-	// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-	core_dispatch::Event
-		OnMouseMove(const tl_size a_caller, const input_hid::MouseEvent& a_event)
+	//on mouse movement
+	core_dispatch::Event OnMouseMove(const tl_size a_caller, const input_hid::MouseEvent& a_event)
 	{
-			TLOC_LOG_CORE_INFO() <<
-				core_str::Format("Caller %i moved the mouse by %i %i %i ", (tl_int)a_caller,
-				a_event.m_X.m_rel,
-				a_event.m_Y.m_rel,
-				a_event.m_Z.m_rel)
-				<<
-				core_str::Format(" to %i %i %i", a_event.m_X.m_abs,
-				a_event.m_Y.m_abs,
-				a_event.m_Z.m_abs);
+		TLOC_LOG_CORE_INFO() <<
+			core_str::Format("Caller %i moved the mouse by %i %i %i ", (tl_int)a_caller,
+			a_event.m_X.m_rel,
+			a_event.m_Y.m_rel,
+			a_event.m_Z.m_rel)
+			<<
+			core_str::Format(" to %i %i %i", a_event.m_X.m_abs,
+			a_event.m_Y.m_abs,
+			a_event.m_Z.m_abs);
 
-			return core_dispatch::f_event::Continue();
-		}
+		return core_dispatch::f_event::Continue();
+	}
 };
 TLOC_DEF_TYPE(MouseCallback);
-
-
-
-
 
 //----------------------------------------------------------------------------------
 // assignment2 
 
-class Assignment2 
-  : public Application
+class Assignment2 : public Application
 {
 public:
 	Assignment2() : Application("NEWT | assignment2"),
 		mAngleX(0.0f), mAngleY(0.0f),
-		mScaleX(1.0f), mScaleY(1.0f), mScaleZ(1.0f),
+		mZoomed(false),
+		mScaleFactor(mBaseScaleFactor),
+		mPreviousMousePos(0.0f, 0.0f)
+	{
+		verteces.push_back(math_t::Vec3f32(-1, 1, -1));
+		verteces.push_back(math_t::Vec3f32(-1, -1, -1));
+		verteces.push_back(math_t::Vec3f32(1, -1, -1));
+		verteces.push_back(math_t::Vec3f32(1, 1, -1));
+		verteces.push_back(math_t::Vec3f32(-1, 1, 1));
+		verteces.push_back(math_t::Vec3f32(1, 1, 1));
+		verteces.push_back(math_t::Vec3f32(1, -1, 1));
+		verteces.push_back(math_t::Vec3f32(-1, -1, 1));
+	}
 
-		mIsAltPressed(false), mIsLeftMouseButtonPressed(false), mIsRightMouseButtonPressed(false), mIsCenterMouseButtonPressed(false)
+	error_type Post_Initialize() override
+	{
+		//change the clear color of the renderer
+		auto m_renderer = GetRenderer();
+		auto m_rendererParameters = m_renderer->GetParams();
+		m_rendererParameters.SetClearColor(gfx_t::Color(0.6f, 0.6f, 0.6f, 1.0f));
 
-	{}
-
-  error_type Post_Initialize() override
-  {
-	  //change the clear color of the renderer
-	  auto m_renderer = GetRenderer();
-	  auto m_rendererParameters = m_renderer->GetParams();
-	  m_rendererParameters.SetClearColor(gfx_t::Color(0.6f, 0.6f, 0.6f, 1.0f));
-
-	  m_renderer->SetParams(m_rendererParameters);
-
-
-
-	  //create the input manager, and initialize the keyboard and mouse.
-	  ParamList<core_t::Any> params;
-	  params.m_param1 = this->GetWindow()->GetWindowHandle();
-
-	  mInputManager = core_sptr::MakeShared<input::InputManagerB>(params);
-	  mKeyboard = mInputManager->CreateHID<input_hid::KeyboardB>();
-	  mMouse = mInputManager->CreateHID<input_hid::MouseB>();
+		m_renderer->SetParams(m_rendererParameters);
 
 
 
-	  return Application::Post_Initialize();
-  }
+		//create the input manager, and initialize the keyboard and mouse.
+		ParamList<core_t::Any> params;
+		params.m_param1 = this->GetWindow()->GetWindowHandle();
+
+		mInputManager = core_sptr::MakeShared<input::InputManagerB>(params);
+		mKeyboard = mInputManager->CreateHID<input_hid::KeyboardB>();
+		mMouse = mInputManager->CreateHID<input_hid::MouseB>();
+
+
+
+		//check if there is a mouse and keyboard attached.
+		TLOC_LOG_CORE_WARN_IF(mKeyboard == nullptr) << "No keyboard detected";
+		TLOC_LOG_CORE_WARN_IF(mMouse == nullptr) << "No mouse detected";
+
+
+
+		//create keyboard and mouse callbacks and register them with their respective HIDs
+		
+
+		
+		if (mMouse) { mMouse->Register(&mMouseCallback); }
+
+
+
+		return Application::Post_Initialize();
+	}
 
 
 
@@ -175,17 +153,10 @@ private:
 	input_hid::keyboard_b_vptr  mKeyboard;
 	input_hid::mouse_b_vptr     mMouse;
 
+	MouseCallback mMouseCallback;
 
 	//vertices
-	math_t::Vec3f32 v1 = math_t::Vec3f32(-1,  1, -1),
-					v2 = math_t::Vec3f32(-1, -1, -1),
-					v3 = math_t::Vec3f32( 1, -1, -1),
-					v4 = math_t::Vec3f32( 1,  1, -1),
-					v5 = math_t::Vec3f32(-1,  1,  1),
-					v6 = math_t::Vec3f32( 1,  1,  1),
-					v7 = math_t::Vec3f32( 1, -1,  1),
-					v8 = math_t::Vec3f32(-1, -1,  1);
-
+	VertexList verteces;
 
 	//colors
 	math_t::Vec3f32 r = math_t::Vec3f32(0.9f, 0.1f, 0.2f),
@@ -195,146 +166,204 @@ private:
 					b = math_t::Vec3f32(0.1f, 0.2f, 0.9f),
 					p = math_t::Vec3f32(0.7f, 0.1f, 0.9f);
 
+	math_t::Vec2f mPreviousMousePos;
 
-  float mAngleX, mAngleY;			 //variables for rotation
-  float mScaleX, mScaleY, mScaleZ;   //variables for scale
-
-  //flags for input
-  bool mIsAltPressed, mIsLeftMouseButtonPressed, mIsRightMouseButtonPressed, mIsCenterMouseButtonPressed;
-
-  //constant to scale cube and keep vertice values clean
-  math_t::Vec3f32 mConstantScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
+	float mAngleX, mAngleY;			 //variables for rotation
+	bool mZoomed;
 
 
+	
+	//variables for screen resoultion
+	//float mWidth = core_utils::CastNumber<float>(GetWindow()->GetWidth());
+	//float mHeight = core_utils::CastNumber<float>(GetWindow()->GetHeight());
+	//float aspectRatio =  mWidth / mHeight;
 
-  void DoRender(sec_type) override
-  {
-	  //apply background/clear color
-	  GetRenderer()->ApplyRenderSettings();
+	//constant to scale cube and keep vertice values clean
+	 math_t::Vec3f32 mBaseScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
 
-	  //need this so that the matrix transformation doesn't get reset each frame
-	  glLoadIdentity();
+	//variales for Zoom scale
+	 math_t::Vec3f32 mZoomScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
 
+	//variable for current scale values
+	math_t::Vec3f32 mScaleFactor;
 
+	void CheckInput()
+	{
+		//update input manager
+		mInputManager->Update();
 
+		input_hid::MouseEvent currentMouseState = mMouse->GetState();
 
+		if (mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::left_control) || mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::right_control))
+		{
+			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::left))
+			{
+				/*tl_float xScaled = core_utils::CastNumber<tl_float>
+					(currentMouseState.m_X.m_abs);
+				tl_float yScaled = core_utils::CastNumber<tl_float>
+					(currentMouseState.m_Y.m_abs);
 
-//move this
-	  //get aspect ratio of window
-	  const float aspectRatio = core_utils::CastNumber<float>(GetWindow()->GetWidth()) / core_utils::CastNumber<float>(GetWindow()->GetHeight());
+				xScaled /= core_utils::CastNumber<tl_float>(mWidth);
+				yScaled /= core_utils::CastNumber<tl_float>(mHeight);
 
-//will be moved and changed
-	  //showing the ability to scale
-	  glScalef(mConstantScaleFactor[0] * 1.0f / aspectRatio, mConstantScaleFactor[1], mConstantScaleFactor[2]);
+				xScaled = (xScaled * 2) - 1;
+				yScaled = (yScaled * 2) - 1;
 
-	  //showing the ability to rotate
-	  glRotatef(mAngleY++, 0, 1, 0); //rotate around the y axis
-	  glRotatef(mAngleX++, 1, 0, 0); //rotate around the x axis
-	  mAngleX++; //make it rotate on x axis twice as fast
-//-----
-
-
-//this will be in an update input method.
-/*// This updates all HIDs attached to the InputManager. An InputManager can
-// be updated at a different interval than the main render update.
-inputMgr->Update();
-
-// Polling if esc key is down, to exit program
-if (keyboard && keyboard->IsKeyDown(input_hid::KeyboardEvent::escape))
-{
-exit(0);
-}*/
+				// mouse co-ords start from top-left, OpenGL from bottom-left
+				yScaled *= -1;*/
 
 
+				TLOC_LOG_CORE_INFO() <<
+					core_str::Format(" LEFT MOUSE IS PRESSED");
+			}
 
-	  //draw cube
-	  glBegin(GL_TRIANGLES);
-	  {
-		  //---------------------
-		  // blue side
-		  glColor3fv(  b.data());
-		  glVertex3fv(v1.data());
-		  glVertex3fv(v2.data());
-		  glVertex3fv(v4.data());
+			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::right))
+			{
+				TLOC_LOG_CORE_INFO() <<
+					core_str::Format(" RIGHT MOUSE IS PRESSED");
+			}
 
-		  glVertex3fv(v2.data());
-		  glVertex3fv(v3.data());
-		  glVertex3fv(v4.data());
-		  //---------------------
+			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::middle))
+			{
+				if (mZoomed)
+				{
+					mScaleFactor -= mZoomScaleFactor;
+				}
+				else
+				{
+					mScaleFactor += mZoomScaleFactor;
+				}
 
-		  //---------------------
-		  // red side
-		  glColor3fv(  r.data());
-		  glVertex3fv(v5.data());
-		  glVertex3fv(v6.data());
-		  glVertex3fv(v8.data());
+				//toggle zoom
+				mZoomed = !mZoomed;
+			}
+		}
+	}
 
-		  glVertex3fv(v6.data());
-		  glVertex3fv(v7.data());
-		  glVertex3fv(v8.data());
-		  //---------------------
+	void DoRender(sec_type) override
+	{
+		//apply background/clear color
+		GetRenderer()->ApplyRenderSettings();
 
-		  //---------------------
-		  // green side
-		  glColor3fv(  g.data());
-		  glVertex3fv(v4.data());
-		  glVertex3fv(v3.data());
-		  glVertex3fv(v6.data());
+		//need this so that the matrix transformation doesn't get reset each frame
+		glLoadIdentity();
 
-		  glVertex3fv(v3.data());
-		  glVertex3fv(v7.data());
-		  glVertex3fv(v6.data());
-		  //---------------------
 
-		  //---------------------
-		  // yellow side
-		  glColor3fv(  y.data());
-		  glVertex3fv(v1.data());
-		  glVertex3fv(v5.data());
-		  glVertex3fv(v8.data());
 
-		  glVertex3fv(v1.data());
-		  glVertex3fv(v8.data());
-		  glVertex3fv(v2.data());
-		  //---------------------
 
-		  //---------------------
-		  // orange side
-		  glColor3fv(  o.data());
-		  glVertex3fv(v1.data());
-		  glVertex3fv(v4.data());
-		  glVertex3fv(v5.data());
 
-		  glVertex3fv(v5.data());
-		  glVertex3fv(v4.data());
-		  glVertex3fv(v6.data());
-		  //---------------------
+	//move this
+		//get aspect ratio of window
+		const float aspectRatio = core_utils::CastNumber<float>(GetWindow()->GetWidth()) / core_utils::CastNumber<float>(GetWindow()->GetHeight());
 
-		  //---------------------
-		  // purple side
-		  glColor3fv(  p.data());
-		  glVertex3fv(v2.data());
-		  glVertex3fv(v8.data());
-		  glVertex3fv(v3.data());
+	//will be moved and changed
+		//showing the ability to scale
+		glScalef(mScaleFactor[0] * 1.0f / aspectRatio, mScaleFactor[1], mScaleFactor[2]);
 
-		  glVertex3fv(v7.data());
-		  glVertex3fv(v3.data());
-		  glVertex3fv(v8.data());
-		  //---------------------
-	  }
+		//showing the ability to rotate
+		glRotatef(mAngleY++, 0, 1, 0); //rotate around the y axis
+		glRotatef(mAngleX++, 1, 0, 0); //rotate around the x axis
+		mAngleX++; //make it rotate on x axis twice as fast
+	//-----
 
-	  //end the gl call.
-	  glEnd();
-  }
 
-  void DoUpdate(sec_type a_deltaT) override
-  {
-	  sec_type deltaT = a_deltaT;
 
-	  deltaT *= 1;
-	  mInputManager->Update();
 
-  }
+
+		//draw cube
+		glBegin(GL_TRIANGLES);
+		{
+			//---------------------
+			// blue side
+			glColor3fv(  b.data());
+			glVertex3fv(verteces[0].data());
+			glVertex3fv(verteces[1].data());
+			glVertex3fv(verteces[3].data());
+
+			glVertex3fv(verteces[1].data());
+			glVertex3fv(verteces[2].data());
+			glVertex3fv(verteces[3].data());
+			//---------------------
+
+			//---------------------
+			// red side
+			glColor3fv(  r.data());
+			glVertex3fv(verteces[4].data());
+			glVertex3fv(verteces[5].data());
+			glVertex3fv(verteces[7].data());
+
+			glVertex3fv(verteces[5].data());
+			glVertex3fv(verteces[6].data());
+			glVertex3fv(verteces[7].data());
+			//---------------------
+
+			//---------------------
+			// green side
+			glColor3fv(  g.data());
+			glVertex3fv(verteces[3].data());
+			glVertex3fv(verteces[2].data());
+			glVertex3fv(verteces[5].data());
+
+			glVertex3fv(verteces[2].data());
+			glVertex3fv(verteces[6].data());
+			glVertex3fv(verteces[5].data());
+			//---------------------
+
+			//---------------------
+			// yellow side
+			glColor3fv(  y.data());
+			glVertex3fv(verteces[0].data());
+			glVertex3fv(verteces[4].data());
+			glVertex3fv(verteces[7].data());
+
+			glVertex3fv(verteces[0].data());
+			glVertex3fv(verteces[7].data());
+			glVertex3fv(verteces[1].data());
+			//---------------------
+
+			//---------------------
+			// orange side
+			glColor3fv(  o.data());
+			glVertex3fv(verteces[0].data());
+			glVertex3fv(verteces[3].data());
+			glVertex3fv(verteces[4].data());
+
+			glVertex3fv(verteces[4].data());
+			glVertex3fv(verteces[3].data());
+			glVertex3fv(verteces[5].data());
+			//---------------------
+
+			//---------------------
+			// purple side
+			glColor3fv(  p.data());
+			glVertex3fv(verteces[1].data());
+			glVertex3fv(verteces[7].data());
+			glVertex3fv(verteces[2].data());
+
+			glVertex3fv(verteces[6].data());
+			glVertex3fv(verteces[2].data());
+			glVertex3fv(verteces[7].data());
+			//---------------------
+		}
+
+		//end the gl call.
+		glEnd();
+	}
+
+	void DoUpdate(sec_type a_deltaT) override
+	{
+		sec_type deltaT = a_deltaT;
+
+		deltaT *= 1;
+
+		CheckInput();
+
+		//if escape key is pressed, exit program
+		if (mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::escape))
+		{
+			exit(0);
+		}
+	}
 };
 
 // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

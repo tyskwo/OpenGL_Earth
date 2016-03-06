@@ -3,313 +3,185 @@
 #include <tlocMath/tloc_math.h>
 #include <tlocPrefab/tloc_prefab.h>
 #include <tlocApplication/tloc_application.h>
-#include <tlocInput/tloc_input.h>
+
+
+
+#include <tlocCore/io/tlocFileContents.h>
+
 
 #include <gameAssetsPath.h>
 
-#include <memory>
-#include <vector>
 
 
-
+//namespace
 using namespace tloc;
 
 
 
-//----------------------------------------------------------------------------------
-// shader paths
-namespace {
-
-#if defined (TLOC_OS_WIN)
-    core_str::String shaderPathVS("/shaders/tlocOneTextureVS.glsl");
-#elif defined (TLOC_OS_IPHONE)
-    core_str::String shaderPathVS("/shaders/tlocOneTextureVS_gl_es_2_0.glsl");
-#endif
-
-#if defined (TLOC_OS_WIN)
-    core_str::String shaderPathFS("/shaders/tlocOneTextureFS.glsl");
-#elif defined (TLOC_OS_IPHONE)
-    core_str::String shaderPathFS("/shaders/tlocOneTextureFS_gl_es_2_0.glsl");
-#endif
+//shader paths
+namespace
+{
+	core_str::String shaderPathVS("/shaders/tlocSimpleLightingVS_perFragment.glsl");
+	core_str::String shaderPathFS("/shaders/tlocSimpleLightingFS_perFragment.glsl");
 
 	const core_str::String g_assetsPath(GetAssetsPath());
 };
 
 
-//tyepdef for vertex list
-typedef std::vector<math_t::Vec3f32> VertexList;
 
 
 
-//----------------------------------------------------------------------------------
-// assignment2 
+/////////////////////////////////////////////////////////////////////////
+// lighting sample
 
-class Assignment2 : public Application
+class Program : public Application
 {
 public:
-	Assignment2() : Application("NEWT | assignment2"),
-		mAngleX(0.0f), mAngleY(0.0f),
-		mZoomFactor(0.0f),
-		mTranslation(0.0f, 0.0f, 0.0f),
-		mScaleFactor(mBaseScaleFactor)
-	{
-		vertices.push_back(math_t::Vec3f32(-1,  1, -1));
-		vertices.push_back(math_t::Vec3f32(-1, -1, -1));
-		vertices.push_back(math_t::Vec3f32( 1, -1, -1));
-		vertices.push_back(math_t::Vec3f32( 1,  1, -1));
-		vertices.push_back(math_t::Vec3f32(-1,  1,  1));
-		vertices.push_back(math_t::Vec3f32( 1,  1,  1));
-		vertices.push_back(math_t::Vec3f32( 1, -1,  1));
-		vertices.push_back(math_t::Vec3f32(-1, -1,  1));
-	}
+	Program() : Application("lighting example") { }
 
+
+private:
+
+	//typedefs
+	typedef ecs_ptr																			Scene;
+	typedef core::smart_ptr::VirtualPtr<graphics::component_system::MeshRenderSystem>		MeshRenderSystem;
+	typedef core::smart_ptr::VirtualPtr<core::component_system::Entity>						Entity;
+	typedef pref_gfx::Material																Material;
+
+	//variables
+	Scene scene;				 //the scene from the application
+	MeshRenderSystem meshSystem; //the render system
+
+	core_str::String sphereObjectPath = "/models/sphereSmooth.obj"; //the sphere (path to it)
+	Entity sphereMesh; //the actual sphere
+
+	gfx_gl::uniform_vso lightPosition; //position of the light
+
+
+
+	Material* sphereMaterial;
+
+
+
+	//after calling the constructor
 	error_type Post_Initialize() override
 	{
-		//change the clear color of the renderer
-		auto m_renderer = GetRenderer();
-		auto m_rendererParameters = m_renderer->GetParams();
-		m_rendererParameters.SetClearColor(gfx_t::Color(0.6f, 0.6f, 0.6f, 1.0f));
+		loadScene();
 
-		m_renderer->SetParams(m_rendererParameters);
+		sphereMesh = createMesh(sphereObjectPath);
 
+		//CAN NOT MAKE THIS A CLASS MEMBER??
+		sphereMaterial = createMaterial();
 
-
-		//create the input manager, and initialize the keyboard and mouse.
-		ParamList<core_t::Any> params;
-		params.m_param1 = this->GetWindow()->GetWindowHandle();
-
-		mInputManager = core_sptr::MakeShared<input::InputManagerB>(params);
-		mKeyboard	  = mInputManager->CreateHID<input_hid::KeyboardB>();
-		mMouse	      = mInputManager->CreateHID<input_hid::MouseB>();
-
-
-
-		//check if there is a mouse and keyboard attached.
-		TLOC_LOG_CORE_WARN_IF(mKeyboard == nullptr) << "No keyboard detected";
-		TLOC_LOG_CORE_WARN_IF(mMouse    == nullptr) << "No mouse detected";
-
-		//set aspect ratio for correct perspective
-		mWindowAspectRatio = core_utils::CastNumber<float>(GetWindow()->GetWidth()) / core_utils::CastNumber<float>(GetWindow()->GetHeight());
-
-
+		//IS THERE A WAY I CAN PASS THESE INTO ^^^ AS AN OPTIONS PARAMETER OF SORTS?
+		sphereMaterial->AddUniform(lightPosition.get());
+		sphereMaterial->Add(sphereMesh, core_io::Path(shaderPathVS), core_io::Path(shaderPathFS));
 
 		return Application::Post_Initialize();
 	}
 
 
 
-private:
-
-	//input manager, keyboard, mouse
-	input::input_mgr_b_ptr		mInputManager;
-	input_hid::keyboard_b_vptr  mKeyboard;
-	input_hid::mouse_b_vptr     mMouse;
-
-	//vertices
-	VertexList vertices;
-
-	//colors
-	math_t::Vec3f32 r = math_t::Vec3f32(0.9f, 0.1f, 0.2f),
-					g = math_t::Vec3f32(0.2f, 0.9f, 0.1f),
-					y = math_t::Vec3f32(0.9f, 0.9f, 0.1f),
-					o = math_t::Vec3f32(0.9f, 0.7f, 0.1f),
-					b = math_t::Vec3f32(0.1f, 0.2f, 0.9f),
-					p = math_t::Vec3f32(0.7f, 0.1f, 0.9f);
 
 
-	//cube movement variables
-	float			mAngleX, mAngleY; //variables for rotation
-	float			mZoomFactor;	  //variable  for zoom
-	math_t::Vec3f32 mTranslation;	  //variable  for translation
-
-
-	
-	//constant to scale cube and keep vertice values clean
-	 math_t::Vec3f32 mBaseScaleFactor = math_t::Vec3f32(0.25f, 0.25f, 0.25f);
-
-	//variable for current scale values
-	math_t::Vec3f32 mScaleFactor;
-
-
-	//value for aspect ratio of the window
-	float mWindowAspectRatio;
-
-
-
-
-	//--------------------------------------------------------------------------------
-	// called each render call
-	void DoRender(sec_type) override
+	//load the scene
+	void loadScene()
 	{
-		//apply background/clear color
-		GetRenderer()->ApplyRenderSettings();
-
-		//need this so that the matrix transformation doesn't get reset each frame
-		glLoadIdentity();
-
+		scene = GetScene();
+		scene->AddSystem<gfx_cs::MaterialSystem>();	//add material system
+		scene->AddSystem<gfx_cs::CameraSystem>();		//add camera
+		meshSystem = scene->AddSystem<gfx_cs::MeshRenderSystem>();	//add mesh render system	
 
 
+		//set renderer
+		meshSystem->SetRenderer(GetRenderer());
 
-		//translate cube
-		glTranslatef(mTranslation[0], mTranslation[1], 0.0f);
+		//create and set the camera
+		meshSystem->SetCamera(createCamera());
 
-		//change scale
-		glScalef((mScaleFactor[0] + mZoomFactor) * 1.0f / mWindowAspectRatio, mScaleFactor[1] + mZoomFactor, mScaleFactor[2] + mZoomFactor);
-
-		//change rotation
-		glRotatef(mAngleY, 0, 1, 0); //rotate around the y axis
-		glRotatef(mAngleX, 1, 0, 0); //rotate around the x axis
-	
-
-
-
-		//draw cube
-		glBegin(GL_TRIANGLES);
-		{
-			//---------------------
-			// blue side
-			glColor3fv(  b.data());
-			glVertex3fv(vertices[0].data());
-			glVertex3fv(vertices[1].data());
-			glVertex3fv(vertices[3].data());
-
-			glVertex3fv(vertices[1].data());
-			glVertex3fv(vertices[2].data());
-			glVertex3fv(vertices[3].data());
-			//---------------------
-
-			//---------------------
-			// red side
-			glColor3fv(  r.data());
-			glVertex3fv(vertices[4].data());
-			glVertex3fv(vertices[5].data());
-			glVertex3fv(vertices[7].data());
-
-			glVertex3fv(vertices[5].data());
-			glVertex3fv(vertices[6].data());
-			glVertex3fv(vertices[7].data());
-			//---------------------
-
-			//---------------------
-			// green side
-			glColor3fv(  g.data());
-			glVertex3fv(vertices[3].data());
-			glVertex3fv(vertices[2].data());
-			glVertex3fv(vertices[5].data());
-
-			glVertex3fv(vertices[2].data());
-			glVertex3fv(vertices[6].data());
-			glVertex3fv(vertices[5].data());
-			//---------------------
-
-			//---------------------
-			// yellow side
-			glColor3fv(  y.data());
-			glVertex3fv(vertices[0].data());
-			glVertex3fv(vertices[4].data());
-			glVertex3fv(vertices[7].data());
-
-			glVertex3fv(vertices[0].data());
-			glVertex3fv(vertices[7].data());
-			glVertex3fv(vertices[1].data());
-			//---------------------
-
-			//---------------------
-			// orange side
-			glColor3fv(  o.data());
-			glVertex3fv(vertices[0].data());
-			glVertex3fv(vertices[3].data());
-			glVertex3fv(vertices[4].data());
-
-			glVertex3fv(vertices[4].data());
-			glVertex3fv(vertices[3].data());
-			glVertex3fv(vertices[5].data());
-			//---------------------
-
-			//---------------------
-			// purple side
-			glColor3fv(  p.data());
-			glVertex3fv(vertices[1].data());
-			glVertex3fv(vertices[7].data());
-			glVertex3fv(vertices[2].data());
-
-			glVertex3fv(vertices[6].data());
-			glVertex3fv(vertices[2].data());
-			glVertex3fv(vertices[7].data());
-			//---------------------
-		}
-
-		//end the gl call.
-		glEnd();
+		//set the light position
+		setLightPosition();
 	}
 
-
-
-
-	
-	//--------------------------------------------------------------------------------
-	// called each update
-	void DoUpdate(sec_type) override
+	//load the passed object
+	gfx_med::ObjLoader::vert_cont_type loadObject(core_str::String object)
 	{
-		//check input from HIDs
-		CheckInput();
-
-		//if escape key is pressed, exit program
-		if (mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::escape))
+		//open up the .obj file, and report error if necessary
+		core_io::FileIO_ReadA objFile(getPath(object));
+		if (objFile.Open() != ErrorSuccess)
 		{
-			exit(0);
+			TLOC_LOG_GFX_ERR() << "Could not open " << getPath(object);
 		}
+
+
+		//get contents of the .obj file
+		core_str::String objFileContents;
+		objFile.GetContents(objFileContents);
+
+
+		//try loading the object, and check for parsing errors
+		gfx_med::ObjLoader objLoader;
+		if (objLoader.Init(objFileContents) != ErrorSuccess)
+		{
+			TLOC_LOG_GFX_ERR() << "Failed to parse .obj file.";
+		}
+
+
+		//vertices of the object
+		gfx_med::ObjLoader::vert_cont_type vertices;
+
+		//unpack the vertices of the object
+		{ objLoader.GetUnpacked(vertices, 0); }
+
+
+		return vertices;
 	}
 
-
-
-
-
-	//--------------------------------------------------------------------------------
-	// receive update events, and change values accordingly
-	void CheckInput()
+	//create mesh from given object path
+	Entity createMesh(core_str::String object)
 	{
-		//update input manager
-		mInputManager->Update();
+		return scene->CreatePrefab<pref_gfx::Mesh>().Create(loadObject(sphereObjectPath));
+	}
 
-		//get current mouse state
-		input_hid::MouseEvent currentMouseState = mMouse->GetState();
+	//create material
+	Material* createMaterial()
+	{
+		Material* temp = new Material(scene->GetEntityManager(), scene->GetComponentPoolManager());
 
-		//check to see if either of the control buttons are pressed
-		if (mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::left_control) || 
-			mKeyboard && mKeyboard->IsKeyDown(input_hid::KeyboardEvent::right_control))
-		{
-			//left mouse button --- rotate
-			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::left))
-			{
-				mAngleX -= core_utils::CastNumber<tl_float>(currentMouseState.m_Y.m_rel);
-				mAngleY -= core_utils::CastNumber<tl_float>(currentMouseState.m_X.m_rel);
-			}
+		//set the assets path of the material.
+		temp->AssetsPath(GetAssetsPath());
 
-			//right mouse button --- zoom
-			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::right))
-			{
-				mZoomFactor -= core_utils::CastNumber<tl_float>(currentMouseState.m_Y.m_rel) / 100.0f;
+		return temp;
+	}
 
-				//check to make sure we're not negatively scaled.
-				if (mZoomFactor <= -mBaseScaleFactor[0]) mZoomFactor = -mBaseScaleFactor[0] + 0.01f;
-			}
+	//get the path of the given string
+	core_io::Path getPath(core_str::String objectPath)
+	{
+		//get the path to the object file
+		return core_io::Path(core_str::String(GetAssetsPath()) + objectPath);
+		//any place you want to pass a string or const char, use a core_io::String (which is a BufferArg), converts to and from both.
+	}
 
-			//middle mouse button --- translate
-			if (mMouse && mMouse->IsButtonDown(input_hid::MouseEvent::middle))
-			{
-				mTranslation[0] += core_utils::CastNumber<tl_float>(currentMouseState.m_X.m_rel) / 100.0f;
-				mTranslation[1] -= core_utils::CastNumber<tl_float>(currentMouseState.m_Y.m_rel) / 100.0f;
+	//create a camera
+	entity_ptr createCamera()
+	{
+		entity_ptr cameraEntity = scene->CreatePrefab<pref_gfx::Camera>()
+			.Perspective(true)
+			.Near(0.1f)
+			.Far(100.0f)
+			.VerticalFOV(math_t::Degree(60.0f))
+			.Create(GetWindow()->GetDimensions());
 
+		//change camera's position
+		cameraEntity->GetComponent<math_cs::Transform>()->SetPosition(math_t::Vec3f32(0, 0, 5));
 
-				//bounds checking
-				if (mTranslation[0] < -1.0f) mTranslation[0] = -1.0f;
-				if (mTranslation[0] >  1.0f) mTranslation[0] =  1.0f;
+		return cameraEntity;
+	}
 
-				if (mTranslation[1] < -1.0f) mTranslation[1] = -1.0f;
-				if (mTranslation[1] >  1.0f) mTranslation[1] =  1.0f;
-			}
-		}
+	//set the shader's light positions
+	void setLightPosition()
+	{
+		lightPosition->SetName("u_lightPosition").SetValueAs(math_t::Vec3f32(1.0f, 1.0f, 3.0f));
 	}
 };
 
@@ -317,20 +189,18 @@ private:
 
 
 
-// xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-
-
-
-
-int TLOC_MAIN(int , char *[])
+//xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+// main method
+int TLOC_MAIN(int, char *[])
 {
-	//Create and start program.
-	Assignment2 app;
-	app.Initialize(core_ds::MakeTuple(800, 600));
-	app.Run();
+	//declare and initialize the program
+	Program program;
+	program.Initialize(core_ds::MakeTuple(800, 600));
 
-	//On exit.
+	//run the program
+	program.Run();
+
+	//on exit
 	TLOC_LOG_CORE_INFO() << "Exiting normally";
 
 	return 0;

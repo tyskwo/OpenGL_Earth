@@ -4,13 +4,14 @@
 #include <tlocPrefab/tloc_prefab.h>
 #include <tlocApplication/tloc_application.h>
 
-
-
 #include <tlocCore/io/tlocFileContents.h>
 
 
 #include <gameAssetsPath.h>
 
+
+//#include "Level.h"
+#include <iostream>
 
 
 //namespace
@@ -29,10 +30,125 @@ namespace
 
 
 
+enum LevelInfo
+{
+	EMPTY = 0,
+	DIRT = 1,
+	EMERALD = 2,
+	MONEY = 3,
+	DIGGER_SPAWN = 4,
+	ENEMY_SPAWN = 5
+};
+
+
+struct Tile
+{
+	bool isDug;
+	math_t::Vec2f32 position;
+	//TODO: add graphic field
+};
+
+class Level
+{
+public:
+	inline int getGridWidth() { return GRID_WIDTH; };
+	inline int getGridHeight() { return GRID_HEIGHT; };
+
+	Level()
+	{
+		grid = new core_conts::Array<Tile>(NUM_TILES);
+	}
+
+	bool loadLevel(core_io::Path levelPath)
+	{
+
+		std::cout << "\n";
+
+		float row = 0, col = 0;
+
+		core_io::FileIO_ReadA levelFile(levelPath);
+
+		if (levelFile.Open() != ErrorSuccess)
+		{
+			TLOC_LOG_CORE_INFO() << "Could not open " << levelPath;
+			return false;
+		}
+
+		core_str::String levelFileContents;
+		levelFile.GetContents(levelFileContents);
+
+		for (auto iter = levelFileContents.begin(); iter != levelFileContents.end(); ++iter)
+		{
+			if (*iter == '\n')
+			{
+				std::cout << "\n";
+				row++;
+			}
+			else if (*iter != ' ')
+			{
+				col++;
+				Tile newTile;
+				newTile.position = math_t::Vec2f32(col, row);
+
+				switch (*iter)
+				{
+				case EMPTY:
+					newTile.isDug = true;
+					break;
+				case DIRT:
+					newTile.isDug = false;
+					break;
+				case EMERALD:
+					newTile.isDug = false;
+					//TODO: Add emerald entity at this location
+					break;
+				case MONEY:
+					newTile.isDug = false;
+					//TODO: Add MoneyBag entity at this location
+					break;
+				case DIGGER_SPAWN:
+					newTile.isDug = false;
+					//TODO: Add DiggerSpawn entity at this location
+					break;
+				case ENEMY_SPAWN:
+					newTile.isDug = false;
+					//TODO: Add EnemySpawn entity at this location
+					break;
+				default:
+					newTile.isDug = false;
+					break;
+				}
+
+				grid->push_back(newTile);
+
+				std::cout << *iter << " ";
+			}
+
+		}
+
+		return true;
+	}
+
+
+private:
+	const int GRID_WIDTH = 15;
+	const int GRID_HEIGHT = 10;
+	const tl_size NUM_TILES = GRID_WIDTH * GRID_HEIGHT;
+
+	//TODO front texture
+	//TODO backTexture
+
+	core_conts::Array<Tile>* grid;
+};
+
+
+
+
+
 
 
 /////////////////////////////////////////////////////////////////////////
-// lighting sample
+// Digger
 
 class Program : public Application
 {
@@ -50,7 +166,7 @@ private:
 
 	//variables
 	Scene scene;				 //the scene from the application
-	MeshRenderSystem meshSystem; //the render system
+	MeshRenderSystem meshSystem; //the render system 3D meshes
 
 	core_str::String sphereObjectPath = "/models/sphereSmooth.obj"; //the sphere (path to it)
 	Entity sphereMesh; //the actual sphere
@@ -58,15 +174,20 @@ private:
 	gfx_gl::uniform_vso lightPosition; //position of the light
 
 
-
 	Material* sphereMaterial;
 
+
+	Level* currentLevel;
 
 
 	//after calling the constructor
 	error_type Post_Initialize() override
 	{
 		loadScene();
+
+		core_str::String levelPath = "levelInfo/level_01.txt";
+
+		currentLevel->loadLevel(getPath(levelPath));
 
 		sphereMesh = createMesh(sphereObjectPath);
 
@@ -80,24 +201,22 @@ private:
 		return Application::Post_Initialize();
 	}
 
-
-
-
-
 	//load the scene
 	void loadScene()
 	{
 		scene = GetScene();
 		scene->AddSystem<gfx_cs::MaterialSystem>();	//add material system
 		scene->AddSystem<gfx_cs::CameraSystem>();		//add camera
-		meshSystem = scene->AddSystem<gfx_cs::MeshRenderSystem>();	//add mesh render system	
 
+		meshSystem = scene->AddSystem<gfx_cs::MeshRenderSystem>();	//add mesh render system
 
 		//set renderer
 		meshSystem->SetRenderer(GetRenderer());
 
 		//create and set the camera
 		meshSystem->SetCamera(createCamera());
+
+		currentLevel = new Level();
 
 		//set the light position
 		setLightPosition();

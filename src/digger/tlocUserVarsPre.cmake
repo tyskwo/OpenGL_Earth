@@ -6,6 +6,8 @@
 # Do NOT remove the following variables. Modify the variables to suit your project
 set(SOLUTION_SOURCE_FILES
   src/main.cpp
+  src/Level.cpp
+  src/Level.h
   )
 
 # Do not include individual assets here. Only add paths

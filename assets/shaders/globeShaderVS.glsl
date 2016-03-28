@@ -9,6 +9,7 @@
 
 	out		vec3 v_vertNormal;		//the vertex's normal
 	out		vec3 v_lightDirection;	//the light direction
+	out		vec2 v_texCoord;
 
 void main()
 { 
@@ -26,4 +27,5 @@ void main()
 	mat3 rotationMatrix = mat3(u_model);
 
 	v_vertNormal = rotationMatrix * a_vertNorm;
+	v_texCoord = a_vertTexCoord0;
 }

@@ -14,8 +14,8 @@ using namespace tloc;
 //shader paths
 namespace
 {
-	core_str::String shaderPathVS("/shaders/multipleTextureVS.glsl");
-	core_str::String shaderPathFS("/shaders/multipleTextureFS.glsl");
+	core_str::String shaderPathVS("/shaders/globeShaderVS.glsl");
+	core_str::String shaderPathFS("/shaders/globeShaderFS.glsl");
 
 	const core_str::String g_assetsPath(GetAssetsPath());
 };
@@ -127,7 +127,7 @@ private:
 	Material defaultMaterial; //the default material with per-fragment lighting
 
 	core_conts::List<Object*> objects;
-	//Object* sphere; //the sphere
+	Object* sphere; //the sphere
 
 	gfx_gl::uniform_vso lightPosition; //position of the light
 
@@ -143,6 +143,8 @@ private:
 		//create a default material and set the light position
 		defaultMaterial = createMaterial(shaderPathVS, shaderPathFS);
 
+		//initialize the sphere
+		sphere = new Object(scene, "/models/globe.obj", defaultMaterial);
 
 		return Application::Post_Initialize();
 	}

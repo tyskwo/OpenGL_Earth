@@ -140,8 +140,24 @@ private:
 		//load the scene
 		loadScene();
 
+
 		//create a default material and set the light position
 		defaultMaterial = createMaterial(shaderPathVS, shaderPathFS);
+
+		auto so = defaultMaterial->GetShaderOperator();
+		auto texObj_1 = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earthmap1k.jpg")));
+		auto texObj_2 = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earthspec1k.jpg")));
+
+		gfx_gl::uniform_vso u_firstTexture;
+		u_firstTexture->SetName("s_texture").SetValueAs(*texObj_1);
+
+		gfx_gl::uniform_vso u_secondTexture;
+		u_secondTexture->SetName("s_texture_2").SetValueAs(*texObj_2);
+
+		so->AddUniform(*u_firstTexture);
+		so->AddUniform(*u_secondTexture);
+
+
 
 		//initialize the sphere
 		sphere = new Object(scene, "/models/globe.obj", defaultMaterial);

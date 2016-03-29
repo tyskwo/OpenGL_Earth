@@ -244,8 +244,8 @@ private:
 		gfx_gl::uniform_vso diffuse;
 		diffuse->SetName("earth_diffuse").SetValueAs(*earthTexture);
 
-		//gfx_gl::uniform_vso specular;
-		//specular->SetName("earth_specular").SetValueAs(*earthSpecular);
+		gfx_gl::uniform_vso specular;
+		specular->SetName("earth_specular").SetValueAs(*earthSpecular);
 
 		gfx_gl::uniform_vso night;
 		night->SetName("earth_night").SetValueAs(*earthNight);
@@ -257,7 +257,7 @@ private:
 		cloudsMask->SetName("earth_clouds_mask").SetValueAs(*earthCloudsMask);
 
 		defaultMaterial->GetShaderOperator()->AddUniform(*diffuse);
-		//defaultMaterial->GetShaderOperator()->AddUniform(*specular);
+		defaultMaterial->GetShaderOperator()->AddUniform(*specular);
 		defaultMaterial->GetShaderOperator()->AddUniform(*night);
 		defaultMaterial->GetShaderOperator()->AddUniform(*clouds);
 		defaultMaterial->GetShaderOperator()->AddUniform(*cloudsMask);

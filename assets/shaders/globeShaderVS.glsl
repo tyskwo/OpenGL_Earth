@@ -2,6 +2,7 @@
 
 	in      vec3 a_vertPos;			//vertex position
 	in      vec3 a_vertNorm;		//vertex normal
+	in		vec2 a_vertTexCoord0;	//vertex texture coordinate
 
 	uniform mat4 u_vp;				//the view projection matrix
 	uniform mat4 u_model;			//the model
@@ -27,5 +28,7 @@ void main()
 	mat3 rotationMatrix = mat3(u_model);
 
 	v_vertNormal = rotationMatrix * a_vertNorm;
+
+//pass the texture coordinate through to the fragment shader
 	v_texCoord = a_vertTexCoord0;
 }

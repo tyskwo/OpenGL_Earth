@@ -35,23 +35,14 @@ void main()
 //normalize the interpolated normal
 	vertNorm_interpolated = normalize(v_vertNormal);
 
-   // float3 r = normalize(2 * dot(light, normal) * normal - light);
-   // float3 v = normalize(mul(normalize(ViewVector), World));
-
-
 //get the diffuse multiplier
 	float diffuseMultiplier = dot(vertNorm_interpolated, v_lightDirection);
-	//float diffuseMultiplier = 2 * dot(vertNorm_interpolated, v_lightDirection) * vertNorm_interpolated - v_lightDirection;
 
 //pass the calculated color to the renderer
 	color = (color_diffuse * diffuseMultiplier + color_night * (1.0f - diffuseMultiplier) + color_clouds * (1.0f - clouds_mask) * (diffuseMultiplier));
 
-
 	//specular value
 	vec3 specular = SpecularIntensity * color_specular * max(pow(max(diffuseMultiplier, 0), Shininess), 0) * length(color);
 	
-
-	//(Earth * illumination + night * (1-illumination)) * (1-cloud_alpha) + cloud_color * illumination * cloud_alpha
-
 	o_color = color + specular;
 }

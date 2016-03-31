@@ -9,7 +9,6 @@
 	uniform vec3 u_lightPosition;	//the light position
 
 	out		vec3 v_lightDirection;	//the light direction
-	out		vec3 v_vertNormal;		//the vertex normal
 	out		vec2 v_texCoord;		//the vertex texture coordinate
 
 void main()
@@ -23,11 +22,6 @@ void main()
 //determine the light direction based on world view
 	vec3 lightDirection = u_lightPosition - vertexWorldPosition;
 	v_lightDirection	= normalize(lightDirection);
-
-//pass the normal to the fragment shader after transforming world view
-	mat3 rotationMatrix = mat3(u_model);
-
-	v_vertNormal = rotationMatrix * a_vertNorm;
 
 //pass the texture coordinate through to the fragment shader
 	v_texCoord = a_vertTexCoord0;

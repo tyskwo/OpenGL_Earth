@@ -17,8 +17,8 @@ namespace
 	core_str::String globeShaderPathVS("/shaders/globeShaderVS.glsl");
 	core_str::String globeShaderPathFS("/shaders/globeShaderFS.glsl");
 
-	core_str::String skyboxShaderPathVS("/shaders/globeShaderVS.glsl");
-	core_str::String skyboxShaderPathFS("/shaders/globeShaderFS.glsl");
+	core_str::String skyboxShaderPathVS("/shaders/skyboxShaderVS.glsl");
+	core_str::String skyboxShaderPathFS("/shaders/skyboxShaderFS.glsl");
 
 	const core_str::String g_assetsPath(GetAssetsPath());
 };
@@ -157,8 +157,8 @@ private:
 		addTexturesToShaders();
 
 	//initialize the objects
-		globe = new Object(scene, "/models/globe.obj", globeMaterial);
-		//skybox = new Object(scene, "/models/skybox.obj", defaultMaterial);
+		globe  = new Object(scene, "/models/globe.obj",  globeMaterial);
+		skybox = new Object(scene, "/models/skybox.obj", skyboxMaterial);
 
 		return Application::Post_Initialize();
 	}
@@ -182,7 +182,7 @@ private:
 		GetRenderer()->SetParams(clearColor);
 
 	//create and set the camera
-		meshSystem->SetCamera(createCamera(true, 0.1f, 100.0f, 90.0f, math_t::Vec3f32(0, 0, 3)));
+		meshSystem->SetCamera(createCamera(true, 0.1f, 100.0f, 90.0f, math_t::Vec3f32(0, 0, 2)));
 
 	//set up the mouse and keyboard
 		registerInputDevices();
@@ -248,6 +248,9 @@ private:
 		auto earthCloudsMask = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_clouds_mask.png")));
 		auto earthNormal     = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_normal_map.png")));
 
+		auto skyboxTexture   = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/space-skybox.png")));
+
+
 	//set the uniforms
 		gfx_gl::uniform_vso diffuse;
 		diffuse->SetName("earth_diffuse").SetValueAs(*earthTexture);
@@ -267,6 +270,10 @@ private:
 		gfx_gl::uniform_vso normals;
 		normals->SetName("earth_normals").SetValueAs(*earthNormal);
 
+
+		gfx_gl::uniform_vso skybox;
+		skybox->SetName("skybox_diffuse").SetValueAs(*skyboxTexture);
+
 	//add to shader
 		globeMaterial->GetShaderOperator()->AddUniform(*diffuse);
 		globeMaterial->GetShaderOperator()->AddUniform(*specular);
@@ -274,6 +281,8 @@ private:
 		globeMaterial->GetShaderOperator()->AddUniform(*clouds);
 		globeMaterial->GetShaderOperator()->AddUniform(*cloudsMask);
 		globeMaterial->GetShaderOperator()->AddUniform(*normals);
+
+		skyboxMaterial->GetShaderOperator()->AddUniform(*skybox);
 	}
 
 //slowly rotate the earth

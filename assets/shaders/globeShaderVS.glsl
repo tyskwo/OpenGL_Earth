@@ -10,7 +10,7 @@
 
 	out		vec3 v_vertNormal;		//the vertex's normal
 	out		vec3 v_lightDirection;	//the light direction
-	out		vec2 v_texCoord;
+	out		vec2 v_texCoord;		//the vertex texture coordinate
 
 void main()
 { 

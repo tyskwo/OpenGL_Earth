@@ -9,6 +9,7 @@
 	uniform sampler2D earth_night;		//texture that holds the earth map at night
 	uniform sampler2D earth_clouds;		//texture that holds the earth's clouds
 	uniform sampler2D earth_clouds_mask;//texture that holds the cloud mask
+	uniform sampler2D earth_normals;	//texture for earth normals
 
 			vec3 color;					//the color of the sphere
 			vec3 vertNorm_interpolated;	//the interpolated normal from each vertex
@@ -30,10 +31,13 @@ void main()
 	vec3 color_clouds   = texture2D(earth_clouds,   vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
 	vec3 clouds_mask   = texture2D(earth_clouds_mask,   vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
 	vec3 color_specular = texture2D(earth_specular, vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
+	vec3 color_normals = texture2D(earth_normals, vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
 
+	color_normals = (color_normals * 2.0) - 1.0;
 
 //normalize the interpolated normal
-	vertNorm_interpolated = normalize(v_vertNormal);
+	vertNorm_interpolated = normalize(color_normals);
+	//vertNorm_interpolated = normalize(v_vertNormal);
 
 //get the diffuse multiplier
 	float diffuseMultiplier = dot(vertNorm_interpolated, v_lightDirection);

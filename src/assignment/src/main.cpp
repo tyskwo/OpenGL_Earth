@@ -240,6 +240,7 @@ private:
 		auto earthClouds   = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_cloud_diffuse.png")));
 		auto earthSpecular = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_specular.png")));
 		auto earthCloudsMask = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_clouds_mask.png")));
+		auto earthNormal = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_normal_map.png")));
 
 		gfx_gl::uniform_vso diffuse;
 		diffuse->SetName("earth_diffuse").SetValueAs(*earthTexture);
@@ -256,11 +257,15 @@ private:
 		gfx_gl::uniform_vso cloudsMask;
 		cloudsMask->SetName("earth_clouds_mask").SetValueAs(*earthCloudsMask);
 
+		gfx_gl::uniform_vso normals;
+		normals->SetName("earth_normals").SetValueAs(*earthNormal);
+
 		defaultMaterial->GetShaderOperator()->AddUniform(*diffuse);
 		defaultMaterial->GetShaderOperator()->AddUniform(*specular);
 		defaultMaterial->GetShaderOperator()->AddUniform(*night);
 		defaultMaterial->GetShaderOperator()->AddUniform(*clouds);
 		defaultMaterial->GetShaderOperator()->AddUniform(*cloudsMask);
+		defaultMaterial->GetShaderOperator()->AddUniform(*normals);
 	}
 
 //slowly rotate the earth

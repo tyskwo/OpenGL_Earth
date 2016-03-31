@@ -14,8 +14,11 @@ using namespace tloc;
 //shader paths
 namespace
 {
-	core_str::String shaderPathVS("/shaders/globeShaderVS.glsl");
-	core_str::String shaderPathFS("/shaders/globeShaderFS.glsl");
+	core_str::String globeShaderPathVS("/shaders/globeShaderVS.glsl");
+	core_str::String globeShaderPathFS("/shaders/globeShaderFS.glsl");
+
+	core_str::String skyboxShaderPathVS("/shaders/globeShaderVS.glsl");
+	core_str::String skyboxShaderPathFS("/shaders/globeShaderFS.glsl");
 
 	const core_str::String g_assetsPath(GetAssetsPath());
 };
@@ -125,9 +128,11 @@ private:
 	ArcBallControlSystem	cameraControl;	//the camera controls
 
 
-	Material defaultMaterial; //the default material with per-fragment lighting
+	Material globeMaterial;
+	Material skyboxMaterial;
 
-	Object* sphere; //the sphere
+	Object* globe;  //the globe
+	Object* skybox; //the 'space' box
 
 	gfx_gl::uniform_vso lightPosition; //position of the light
 
@@ -144,16 +149,16 @@ private:
 	//load the scene
 		loadScene();
 
-
 	//create a default material and set the light position
-		defaultMaterial = createMaterial(shaderPathVS, shaderPathFS);
+		globeMaterial  = createMaterial(globeShaderPathVS,  globeShaderPathFS);
+		skyboxMaterial = createMaterial(skyboxShaderPathVS, skyboxShaderPathFS);
 
 	//add the texture uniforms to the shaders
 		addTexturesToShaders();
 
-
-	//initialize the sphere
-		sphere = new Object(scene, "/models/globe.obj", defaultMaterial);
+	//initialize the objects
+		globe = new Object(scene, "/models/globe.obj", globeMaterial);
+		//skybox = new Object(scene, "/models/skybox.obj", defaultMaterial);
 
 		return Application::Post_Initialize();
 	}
@@ -235,13 +240,15 @@ private:
 //set the texture uniforms in the shaders
 	void addTexturesToShaders()
 	{
-		auto earthTexture  = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_diffuse.png")));
-		auto earthNight    = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_night.png")));
-		auto earthClouds   = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_cloud_diffuse.png")));
-		auto earthSpecular = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_specular.png")));
+	//load the textures
+		auto earthTexture    = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_diffuse.png")));
+		auto earthNight      = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_night.png")));
+		auto earthClouds     = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_cloud_diffuse.png")));
+		auto earthSpecular   = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_specular.png")));
 		auto earthCloudsMask = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_clouds_mask.png")));
-		auto earthNormal = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_normal_map.png")));
+		auto earthNormal     = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_normal_map.png")));
 
+	//set the uniforms
 		gfx_gl::uniform_vso diffuse;
 		diffuse->SetName("earth_diffuse").SetValueAs(*earthTexture);
 
@@ -260,21 +267,22 @@ private:
 		gfx_gl::uniform_vso normals;
 		normals->SetName("earth_normals").SetValueAs(*earthNormal);
 
-		defaultMaterial->GetShaderOperator()->AddUniform(*diffuse);
-		defaultMaterial->GetShaderOperator()->AddUniform(*specular);
-		defaultMaterial->GetShaderOperator()->AddUniform(*night);
-		defaultMaterial->GetShaderOperator()->AddUniform(*clouds);
-		defaultMaterial->GetShaderOperator()->AddUniform(*cloudsMask);
-		defaultMaterial->GetShaderOperator()->AddUniform(*normals);
+	//add to shader
+		globeMaterial->GetShaderOperator()->AddUniform(*diffuse);
+		globeMaterial->GetShaderOperator()->AddUniform(*specular);
+		globeMaterial->GetShaderOperator()->AddUniform(*night);
+		globeMaterial->GetShaderOperator()->AddUniform(*clouds);
+		globeMaterial->GetShaderOperator()->AddUniform(*cloudsMask);
+		globeMaterial->GetShaderOperator()->AddUniform(*normals);
 	}
 
 //slowly rotate the earth
 	void DoUpdate(sec_type delta) override
 	{
 	//apply rotation to globe's transform
-		auto temp = sphere->GetMesh()->GetComponent<math_cs::Transform>()->GetOrientation();
+		auto temp = globe->GetMesh()->GetComponent<math_cs::Transform>()->GetOrientation();
 		temp.MakeRotationY(earthAngle);
-		sphere->GetMesh()->GetComponent<math_cs::Transform>()->SetOrientation(temp);
+		globe->GetMesh()->GetComponent<math_cs::Transform>()->SetOrientation(temp);
 
 	//increase earth's rotation
 		earthAngle += 0.001f;

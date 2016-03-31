@@ -1,7 +1,6 @@
 #version 330 core
 
 	in		vec3 v_lightDirection;		//the light direction
-	in		vec3 v_vertNormal;			//the vertext normal
 	in		vec2 v_texCoord;			//the texture coordinate for the vertex
 
 	uniform sampler2D earth_diffuse;	//texture that holds the earth map		
@@ -33,8 +32,7 @@ void main()
 		 color_normals = (color_normals * 2.0) - 1.0;
 
 //normalize the interpolated normal
-	vertNorm_interpolated = normalize(color_normals * v_vertNormal);
-	//vertNorm_interpolated = normalize(v_vertNormal);
+	vertNorm_interpolated = normalize(color_normals);
 
 //get the diffuse multiplier
 	float diffuseMultiplier = dot(vertNorm_interpolated, v_lightDirection);

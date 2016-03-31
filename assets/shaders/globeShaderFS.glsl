@@ -13,9 +13,8 @@
 			vec3 color;					//the color of the sphere
 			vec3 vertNorm_interpolated;	//the interpolated normal from each vertex
 
-			//specular lighting values
-			float Shininess = 50;
-			float SpecularIntensity = 2;
+			float shininess = 50;		//specular lighting values
+			float specularIntensity = 2;
 
 
 	out		vec3 o_color;				//the color to pass to the renderer
@@ -25,11 +24,11 @@
 void main()
 {
 //get the color for each texture at the given coordinate
-	vec3 color_diffuse  = texture2D(earth_diffuse,  vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
-	vec3 color_night    = texture2D(earth_night,    vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
-	vec3 color_clouds   = texture2D(earth_clouds,   vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
-	vec3 clouds_mask   = texture2D(earth_clouds_mask,   vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
-	vec3 color_specular = texture2D(earth_specular, vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
+	vec3 color_diffuse  = texture2D(earth_diffuse,     vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
+	vec3 color_night    = texture2D(earth_night,       vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
+	vec3 color_clouds   = texture2D(earth_clouds,      vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
+	vec3 clouds_mask    = texture2D(earth_clouds_mask, vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
+	vec3 color_specular = texture2D(earth_specular,    vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
 
 
 //normalize the interpolated normal
@@ -38,11 +37,12 @@ void main()
 //get the diffuse multiplier
 	float diffuseMultiplier = dot(vertNorm_interpolated, v_lightDirection);
 
-//pass the calculated color to the renderer
+//get the interpolated color based on the diffuse texture, night texture, and clouds texture.
 	color = (color_diffuse * diffuseMultiplier + color_night * (1.0f - diffuseMultiplier) + color_clouds * (1.0f - clouds_mask) * (diffuseMultiplier));
 
-	//specular value
-	vec3 specular = SpecularIntensity * color_specular * max(pow(max(diffuseMultiplier, 0), Shininess), 0) * length(color);
+//get the specular value based on the specular intensity and specular mask.
+	vec3 specular = specularIntensity * color_specular * max(pow(max(diffuseMultiplier, 0), shininess), 0) * length(color);
 	
+//pass the calculated color to the renderer; combine the specular with the interpolated color
 	o_color = color + specular;
 }

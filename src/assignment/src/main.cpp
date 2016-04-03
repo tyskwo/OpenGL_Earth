@@ -136,11 +136,15 @@ private:
 
 	gfx_gl::uniform_vso lightPosition; //position of the light
 
+	gfx_gl::uniform_vso u_cloudShift; //cloud shift value
+
+
 
 //program specific variables
 	float earthAngle = 0.0f;
+	
 
-
+	float cloudShift = 0.0f;
 
 //after calling the constructor
 	error_type Post_Initialize() override
@@ -218,7 +222,7 @@ private:
 	{
 		auto materialEntity = scene->CreatePrefab<pref_gfx::Material>()
 			.AssetsPath(GetAssetsPath())
-			.AddUniform(lightPosition.get())
+			//.AddUniform(lightPosition.get())
 			.Create(core_io::Path(vertexShader), core_io::Path(fragmentShader));
 
 		return materialEntity->GetComponent<gfx_cs::Material>();
@@ -240,16 +244,28 @@ private:
 //set the texture uniforms in the shaders
 	void addTexturesToShaders()
 	{
+
 	//load the textures
 		auto earthTexture    = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_diffuse.jpg")));
 		auto earthNight      = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_night.jpg")));
-		auto earthClouds     = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_cloud_diffuse.png")));
+		auto earthClouds	 = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_cloud_diffuse.png")));
 		auto earthSpecular   = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_specular.jpg")));
 		auto earthCloudsMask = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_clouds_mask.png")));
 		auto earthNormal     = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_normal_map.png")));
 
 		auto skyboxTexture   = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/space-skybox.png")));
 
+		gfx_gl::TextureObject::Params cloudParams(earthClouds->GetParams());
+		cloudParams.Wrap_S<gfx_gl::p_texture_object::wrap_technique::Repeat>()
+					.Wrap_T<gfx_gl::p_texture_object::wrap_technique::Repeat>()
+					.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
+		earthClouds->SetParams(cloudParams);
+
+		gfx_gl::TextureObject::Params cloudMaskParams(earthCloudsMask->GetParams());
+		cloudMaskParams.Wrap_S<gfx_gl::p_texture_object::wrap_technique::Repeat>()
+						.Wrap_T<gfx_gl::p_texture_object::wrap_technique::Repeat>()
+						.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
+		earthCloudsMask->SetParams(cloudMaskParams);
 
 	//set the uniforms
 		gfx_gl::uniform_vso diffuse;
@@ -274,13 +290,17 @@ private:
 		gfx_gl::uniform_vso skybox;
 		skybox->SetName("skybox_diffuse").SetValueAs(*skyboxTexture);
 
+		u_cloudShift->SetName("u_cloud_shift").SetValueAs(cloudShift);
+
 	//add to shader
+		globeMaterial->GetShaderOperator()->AddUniform(*lightPosition);
 		globeMaterial->GetShaderOperator()->AddUniform(*diffuse);
 		globeMaterial->GetShaderOperator()->AddUniform(*specular);
 		globeMaterial->GetShaderOperator()->AddUniform(*night);
 		globeMaterial->GetShaderOperator()->AddUniform(*clouds);
 		globeMaterial->GetShaderOperator()->AddUniform(*cloudsMask);
 		globeMaterial->GetShaderOperator()->AddUniform(*normals);
+		globeMaterial->GetShaderOperator()->AddUniform(*u_cloudShift);
 
 		skyboxMaterial->GetShaderOperator()->AddUniform(*skybox);
 	}
@@ -295,6 +315,10 @@ private:
 
 	//increase earth's rotation
 		earthAngle += 0.001f;
+
+		cloudShift += 0.001f;
+		u_cloudShift->SetName("u_cloud_shift").SetValueAs(cloudShift);
+		globeMaterial->GetShaderOperator()->AddUniform(*u_cloudShift);
 
 	//call Application's DoUpdate for camera controls
 		Application::DoUpdate(delta);

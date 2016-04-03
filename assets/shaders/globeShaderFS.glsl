@@ -10,6 +10,7 @@
 	uniform sampler2D earth_clouds;				//texture that holds the earth's clouds
 	uniform sampler2D earth_clouds_mask;		//texture that holds the cloud mask
 	uniform sampler2D earth_normals;			//texture for earth normals
+	uniform float	  u_cloud_shift;			//amount to Shift clouds by
 
 			vec3	  color;					//the color of the sphere
 			vec3	  vertNorm_interpolated;	//the interpolated normal from each vertex
@@ -26,8 +27,8 @@ void main()
 //get the color for each texture at the given coordinate
 	vec3 color_diffuse  = texture2D(earth_diffuse,     vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
 	vec3 color_night    = texture2D(earth_night,       vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
-	vec3 color_clouds   = texture2D(earth_clouds,      vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
-	vec3 clouds_mask    = texture2D(earth_clouds_mask, vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
+	vec3 color_clouds   = texture2D(earth_clouds,      vec2(v_texCoord.s + u_cloud_shift, 1 - v_texCoord.t)).rgb;
+	vec3 clouds_mask    = texture2D(earth_clouds_mask, vec2(v_texCoord.s + u_cloud_shift, 1 - v_texCoord.t)).rgb;
 	vec3 color_specular = texture2D(earth_specular,    vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
 	vec3 color_normals  = texture2D(earth_normals,     vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
 		 color_normals  = (color_normals * 2.0) - 1.0;

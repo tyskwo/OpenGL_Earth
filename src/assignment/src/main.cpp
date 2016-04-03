@@ -248,9 +248,9 @@ private:
 	//load the textures
 		auto earthTexture    = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_diffuse.jpg")));
 		auto earthNight      = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_night.jpg")));
-		auto earthClouds	 = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_cloud_diffuse.png")));
+		auto earthClouds	 = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/clouds.jpg")));
 		auto earthSpecular   = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_specular.jpg")));
-		auto earthCloudsMask = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_clouds_mask.png")));
+		//auto earthCloudsMask = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_clouds_mask.png")));
 		auto earthNormal     = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_normal_map.png")));
 
 		auto skyboxTexture   = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/space-skybox.png")));
@@ -261,11 +261,11 @@ private:
 					.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
 		earthClouds->SetParams(cloudParams);
 
-		gfx_gl::TextureObject::Params cloudMaskParams(earthCloudsMask->GetParams());
+		/*gfx_gl::TextureObject::Params cloudMaskParams(earthCloudsMask->GetParams());
 		cloudMaskParams.Wrap_S<gfx_gl::p_texture_object::wrap_technique::Repeat>()
 						.Wrap_T<gfx_gl::p_texture_object::wrap_technique::Repeat>()
 						.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
-		earthCloudsMask->SetParams(cloudMaskParams);
+		earthCloudsMask->SetParams(cloudMaskParams);*/
 
 	//set the uniforms
 		gfx_gl::uniform_vso diffuse;
@@ -280,8 +280,8 @@ private:
 		gfx_gl::uniform_vso clouds;
 		clouds->SetName("earth_clouds").SetValueAs(*earthClouds);
 
-		gfx_gl::uniform_vso cloudsMask;
-		cloudsMask->SetName("earth_clouds_mask").SetValueAs(*earthCloudsMask);
+		//gfx_gl::uniform_vso cloudsMask;
+		//cloudsMask->SetName("earth_clouds_mask").SetValueAs(*earthCloudsMask);
 
 		gfx_gl::uniform_vso normals;
 		normals->SetName("earth_normals").SetValueAs(*earthNormal);
@@ -298,7 +298,7 @@ private:
 		globeMaterial->GetShaderOperator()->AddUniform(*specular);
 		globeMaterial->GetShaderOperator()->AddUniform(*night);
 		globeMaterial->GetShaderOperator()->AddUniform(*clouds);
-		globeMaterial->GetShaderOperator()->AddUniform(*cloudsMask);
+		//globeMaterial->GetShaderOperator()->AddUniform(*cloudsMask);
 		globeMaterial->GetShaderOperator()->AddUniform(*normals);
 		globeMaterial->GetShaderOperator()->AddUniform(*u_cloudShift);
 

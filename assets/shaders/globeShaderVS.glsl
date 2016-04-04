@@ -1,8 +1,8 @@
 #version 330 core
 
 	in      vec3 a_vertPos;			//vertex position
-	in      vec3 a_vertNorm;		//vertex normal
 	in		vec2 a_vertTexCoord0;	//vertex texture coordinate
+	in		mat3 a_vertTBN;
 
 	uniform mat4 u_vp;				//the view projection matrix
 	uniform mat4 u_model;			//the model
@@ -27,7 +27,7 @@ void main()
 //pass the normal to the fragment shader after transforming world view
 	mat3 rotationMatrix = mat3(u_model);
 
-	v_vertNormal = rotationMatrix * a_vertNorm;
+	v_vertNormal = rotationMatrix * a_vertTBN[2];
 
 //pass the texture coordinate through to the fragment shader
 	v_texCoord = a_vertTexCoord0;

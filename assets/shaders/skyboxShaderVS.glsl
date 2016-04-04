@@ -1,8 +1,8 @@
 #version 330 core
 
 	in      vec3 a_vertPos;			//vertex position
-	in      vec3 a_vertNorm;		//vertex normal
 	in		vec2 a_vertTexCoord0;	//vertex texture coordinate
+	in		mat3 a_vertTBN;
 
 	uniform mat4 u_vp;				//the view projection matrix
 	uniform mat4 u_model;			//the model

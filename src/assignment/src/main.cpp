@@ -244,28 +244,27 @@ private:
 //set the texture uniforms in the shaders
 	void addTexturesToShaders()
 	{
+		gfx_gl::TextureObject::Params cloudParams;
+		cloudParams.Wrap_S<gfx_gl::p_texture_object::wrap_technique::Repeat>()
+			.Wrap_T<gfx_gl::p_texture_object::wrap_technique::Repeat>()
+			.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
 
 	//load the textures
 		auto earthTexture    = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_diffuse.jpg")));
 		auto earthNight      = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_night.jpg")));
-		auto earthClouds	 = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/clouds.jpg")));
+		auto earthClouds	 = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/clouds.jpg")), cloudParams);
 		auto earthSpecular   = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_specular.jpg")));
-		//auto earthCloudsMask = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_clouds_mask.png")));
 		auto earthNormal     = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_normal_map.png")));
 
 		auto skyboxTexture   = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/space-skybox.png")));
 
-		gfx_gl::TextureObject::Params cloudParams(earthClouds->GetParams());
+		/*gfx_gl::TextureObject::Params cloudParams(earthClouds->GetParams());
 		cloudParams.Wrap_S<gfx_gl::p_texture_object::wrap_technique::Repeat>()
-					.Wrap_T<gfx_gl::p_texture_object::wrap_technique::Repeat>()
-					.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
+			.Wrap_T<gfx_gl::p_texture_object::wrap_technique::Repeat>()
+			.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
 		earthClouds->SetParams(cloudParams);
+		earthClouds->UpdateParameters();*/
 
-		/*gfx_gl::TextureObject::Params cloudMaskParams(earthCloudsMask->GetParams());
-		cloudMaskParams.Wrap_S<gfx_gl::p_texture_object::wrap_technique::Repeat>()
-						.Wrap_T<gfx_gl::p_texture_object::wrap_technique::Repeat>()
-						.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
-		earthCloudsMask->SetParams(cloudMaskParams);*/
 
 	//set the uniforms
 		gfx_gl::uniform_vso diffuse;
@@ -279,9 +278,6 @@ private:
 
 		gfx_gl::uniform_vso clouds;
 		clouds->SetName("earth_clouds").SetValueAs(*earthClouds);
-
-		//gfx_gl::uniform_vso cloudsMask;
-		//cloudsMask->SetName("earth_clouds_mask").SetValueAs(*earthCloudsMask);
 
 		gfx_gl::uniform_vso normals;
 		normals->SetName("earth_normals").SetValueAs(*earthNormal);
@@ -298,7 +294,6 @@ private:
 		globeMaterial->GetShaderOperator()->AddUniform(*specular);
 		globeMaterial->GetShaderOperator()->AddUniform(*night);
 		globeMaterial->GetShaderOperator()->AddUniform(*clouds);
-		//globeMaterial->GetShaderOperator()->AddUniform(*cloudsMask);
 		globeMaterial->GetShaderOperator()->AddUniform(*normals);
 		globeMaterial->GetShaderOperator()->AddUniform(*u_cloudShift);
 

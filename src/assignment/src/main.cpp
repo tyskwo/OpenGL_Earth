@@ -14,13 +14,13 @@ using namespace tloc;
 //shader paths
 namespace
 {
+//globe vertex and fragment shader paths
 	core_str::String globeShaderPathVS("/shaders/globeShaderVS.glsl");
 	core_str::String globeShaderPathFS("/shaders/globeShaderFS.glsl");
 
+//skybox vertex and fragment shader paths
 	core_str::String skyboxShaderPathVS("/shaders/skyboxShaderVS.glsl");
 	core_str::String skyboxShaderPathFS("/shaders/skyboxShaderFS.glsl");
-
-	const core_str::String g_assetsPath(GetAssetsPath());
 };
 
 
@@ -134,22 +134,15 @@ private:
 	Object* globe;  //the globe
 	Object* skybox; //the 'space' box
 
-	gfx_gl::uniform_vso lightPosition; //position of the light
-
-	gfx_gl::uniform_vso u_cloudShift; //cloud shift value
-
-
 
 //program specific variables
-	float earthAngle = 0.0f;
-	
-
-	float cloudShift = 0.0f;
+	float			earthAngle    = 0.0f;
+	float			cloudAngle    = 0.0f;
+	math_t::Vec3f32 lightPosition = math_t::Vec3f32(1.0f, 1.0f, 3.0f);
 
 //after calling the constructor
 	error_type Post_Initialize() override
 	{
-
 	//load the scene
 		loadScene();
 
@@ -157,8 +150,8 @@ private:
 		globeMaterial  = createMaterial(globeShaderPathVS,  globeShaderPathFS);
 		skyboxMaterial = createMaterial(skyboxShaderPathVS, skyboxShaderPathFS);
 
-	//add the texture uniforms to the shaders
-		addTexturesToShaders();
+	//add uniforms to the shaders
+		addUniforms();
 
 	//initialize the objects
 		globe  = new Object(scene, "/models/globe.obj",  globeMaterial);
@@ -190,9 +183,6 @@ private:
 
 	//set up the mouse and keyboard
 		registerInputDevices();
-
-	//set the light position
-		setLightPosition(math_t::Vec3f32(1.0f, 1.0f, 3.0f));
 	}
 
 //create a camera
@@ -222,7 +212,6 @@ private:
 	{
 		auto materialEntity = scene->CreatePrefab<pref_gfx::Material>()
 			.AssetsPath(GetAssetsPath())
-			//.AddUniform(lightPosition.get())
 			.Create(core_io::Path(vertexShader), core_io::Path(fragmentShader));
 
 		return materialEntity->GetComponent<gfx_cs::Material>();
@@ -235,69 +224,85 @@ private:
 		GetMouse()->Register(&*cameraControl);
 	}
 
-//set the shader's light positions
-	void setLightPosition(math_t::Vec3f32 position)
+//add the uniforms to the shaders
+	void addUniforms()
 	{
-		lightPosition->SetName("u_lightPosition").SetValueAs(position);
+		setLightPosition();
+		setCloudRotation();
+		setTextures();
 	}
 
-//set the texture uniforms in the shaders
-	void addTexturesToShaders()
+//set the shader's light position
+	void setLightPosition()
 	{
+		gfx_gl::uniform_vso u_lightPosition; u_lightPosition->SetName("u_lightPosition").SetValueAs(lightPosition);
+
+		globeMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
+	}
+
+//set the shader's cloud rotation
+	void setCloudRotation()
+	{
+		gfx_gl::uniform_vso u_cloudAngle; u_cloudAngle->SetName("u_cloudAngle").SetValueAs(cloudAngle);
+
+		globeMaterial->GetShaderOperator()->AddUniform(*u_cloudAngle);
+	}
+
+//update the clouds rotation
+	void updateCloudRotation()
+	{
+		gfx_gl::f_shader_operator::GetUniform(*globeMaterial->GetShaderOperator(), "u_cloudAngle")->SetValueAs(cloudAngle);
+	}
+
+//set the globe's texture uniforms
+	void setGlobeTextures()
+	{
+	//parameter to repeat wrap the cloud texture
 		gfx_gl::TextureObject::Params cloudParams;
 		cloudParams.Wrap_S<gfx_gl::p_texture_object::wrap_technique::Repeat>()
 			.Wrap_T<gfx_gl::p_texture_object::wrap_technique::Repeat>()
 			.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
 
 	//load the textures
-		auto earthTexture    = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_diffuse.jpg")));
-		auto earthNight      = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_night.jpg")));
-		auto earthClouds	 = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/clouds.jpg")), cloudParams);
-		auto earthSpecular   = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_specular.jpg")));
-		auto earthNormal     = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_normal_map.png")));
-
-		auto skyboxTexture   = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/space-skybox.png")));
-
-		/*gfx_gl::TextureObject::Params cloudParams(earthClouds->GetParams());
-		cloudParams.Wrap_S<gfx_gl::p_texture_object::wrap_technique::Repeat>()
-			.Wrap_T<gfx_gl::p_texture_object::wrap_technique::Repeat>()
-			.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
-		earthClouds->SetParams(cloudParams);
-		earthClouds->UpdateParameters();*/
-
+		auto earthTexture = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_diffuse.jpg")));
+		auto earthNight = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_night.jpg")));
+		auto earthClouds = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/clouds.jpg")), cloudParams);
+		auto earthSpecular = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_specular.jpg")));
+		auto earthNormal = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_normal_map.png")));
 
 	//set the uniforms
-		gfx_gl::uniform_vso diffuse;
-		diffuse->SetName("earth_diffuse").SetValueAs(*earthTexture);
-
-		gfx_gl::uniform_vso specular;
-		specular->SetName("earth_specular").SetValueAs(*earthSpecular);
-
-		gfx_gl::uniform_vso night;
-		night->SetName("earth_night").SetValueAs(*earthNight);
-
-		gfx_gl::uniform_vso clouds;
-		clouds->SetName("earth_clouds").SetValueAs(*earthClouds);
-
-		gfx_gl::uniform_vso normals;
-		normals->SetName("earth_normals").SetValueAs(*earthNormal);
-
-
-		gfx_gl::uniform_vso skybox;
-		skybox->SetName("skybox_diffuse").SetValueAs(*skyboxTexture);
-
-		u_cloudShift->SetName("u_cloud_shift").SetValueAs(cloudShift);
+		gfx_gl::uniform_vso diffuse;  diffuse->SetName("earth_diffuse").SetValueAs(*earthTexture);
+		gfx_gl::uniform_vso specular; specular->SetName("earth_specular").SetValueAs(*earthSpecular);
+		gfx_gl::uniform_vso night;    night->SetName("earth_night").SetValueAs(*earthNight);
+		gfx_gl::uniform_vso clouds;   clouds->SetName("earth_clouds").SetValueAs(*earthClouds);
+		gfx_gl::uniform_vso normals;  normals->SetName("earth_normals").SetValueAs(*earthNormal);
 
 	//add to shader
-		globeMaterial->GetShaderOperator()->AddUniform(*lightPosition);
 		globeMaterial->GetShaderOperator()->AddUniform(*diffuse);
 		globeMaterial->GetShaderOperator()->AddUniform(*specular);
 		globeMaterial->GetShaderOperator()->AddUniform(*night);
 		globeMaterial->GetShaderOperator()->AddUniform(*clouds);
 		globeMaterial->GetShaderOperator()->AddUniform(*normals);
-		globeMaterial->GetShaderOperator()->AddUniform(*u_cloudShift);
+	}
 
+//set the skybox texture uniform
+	void setSkyboxTextures()
+	{
+	//load the texture
+		auto skyboxTexture = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/space-skybox.png")));
+
+	//set the uniform
+		gfx_gl::uniform_vso skybox; skybox->SetName("skybox_diffuse").SetValueAs(*skyboxTexture);
+
+	//add to shader
 		skyboxMaterial->GetShaderOperator()->AddUniform(*skybox);
+	}
+
+//set the texture uniforms in the shaders
+	void setTextures()
+	{
+		setGlobeTextures();
+		setSkyboxTextures();
 	}
 
 //slowly rotate the earth
@@ -311,9 +316,9 @@ private:
 	//increase earth's rotation
 		earthAngle += 0.001f;
 
-		cloudShift += 0.001f;
-		u_cloudShift->SetName("u_cloud_shift").SetValueAs(cloudShift);
-		globeMaterial->GetShaderOperator()->AddUniform(*u_cloudShift);
+	//increase cloud's rotation
+		cloudAngle -= 0.0001f;
+		updateCloudRotation();
 
 	//call Application's DoUpdate for camera controls
 		Application::DoUpdate(delta);

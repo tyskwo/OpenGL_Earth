@@ -2,7 +2,7 @@
 
 	in      vec3 a_vertPos;			//vertex position
 	in		vec2 a_vertTexCoord0;	//vertex texture coordinate
-	in		mat3 a_vertTBN;
+	in		mat3 a_vertTBN;			//vertex tbn matrix
 
 	uniform mat4 u_vp;				//the view projection matrix
 	uniform mat4 u_model;			//the model

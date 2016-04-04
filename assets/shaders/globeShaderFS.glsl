@@ -9,7 +9,8 @@
 	uniform sampler2D earth_night;				//texture that holds the earth map at night
 	uniform sampler2D earth_clouds;				//texture that holds the earth's clouds
 	uniform sampler2D earth_normals;			//texture for earth normals
-	uniform float	  u_cloud_shift;			//amount to Shift clouds by
+
+	uniform float	  u_cloudAngle;				//amount to Shift clouds by
 
 			vec3	  color;					//the color of the sphere
 			vec3	  vertNorm_interpolated;	//the interpolated normal from each vertex
@@ -24,11 +25,11 @@
 void main()
 {
 //get the color for each texture at the given coordinate
-	vec3 color_diffuse  = texture2D(earth_diffuse,     vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
-	vec3 color_night    = texture2D(earth_night,       vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
-	vec3 color_clouds   = texture2D(earth_clouds,      vec2(v_texCoord.s + u_cloud_shift, 1 - v_texCoord.t)).rgb;
-	vec3 color_specular = texture2D(earth_specular,    vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
-	vec3 color_normals  = texture2D(earth_normals,     vec2(v_texCoord.s, 1 - v_texCoord.t)).rgb;
+	vec3 color_diffuse  = texture2D(earth_diffuse,     vec2(v_texCoord.s,				 1 - v_texCoord.t)).rgb;
+	vec3 color_night    = texture2D(earth_night,       vec2(v_texCoord.s,				 1 - v_texCoord.t)).rgb;
+	vec3 color_clouds   = texture2D(earth_clouds,      vec2(v_texCoord.s + u_cloudAngle, 1 - v_texCoord.t)).rgb;
+	vec3 color_specular = texture2D(earth_specular,    vec2(v_texCoord.s,				 1 - v_texCoord.t)).rgb;
+	vec3 color_normals  = texture2D(earth_normals,     vec2(v_texCoord.s,				 1 - v_texCoord.t)).rgb;
 		 color_normals  = (color_normals * 2.0) - 1.0;
 
 //normalize the interpolated normal
@@ -46,6 +47,11 @@ void main()
 //pass the calculated color to the renderer; combine the specular with the interpolated color
 	o_color = color + specular;
 
+//gamma correction
+	o_color.r = pow(o_color.r, 1.0 / 2.2);
+	o_color.g = pow(o_color.g, 1.0 / 2.2);
+	o_color.b = pow(o_color.b, 1.0 / 2.2);
 
-	//raise color to power of 1 over 2.2 for gamma correction
+
+	//need to include normals in color calculation
 }

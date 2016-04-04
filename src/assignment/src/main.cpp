@@ -127,18 +127,22 @@ private:
 	MeshRenderSystem		meshSystem;		//the render system
 	ArcBallControlSystem	cameraControl;	//the camera controls
 
-
-	Material globeMaterial;
-	Material skyboxMaterial;
+	Material globeMaterial;		//the globe material
+	Material skyboxMaterial;	//the skybox material
 
 	Object* globe;  //the globe
 	Object* skybox; //the 'space' box
 
 
 //program specific variables
-	float			earthAngle    = 0.0f;
-	float			cloudAngle    = 0.0f;
-	math_t::Vec3f32 lightPosition = math_t::Vec3f32(1.0f, 1.0f, 3.0f);
+	float			earthAngle      =  0.0f;
+	float			earthAngleDelta =  0.001f;
+	float			cloudAngle      =  0.0f;
+	float			cloudAngleDelta = -0.0001f;	//weather generally travels west->east.
+	math_t::Vec3f32 lightPosition   = math_t::Vec3f32(-1, 0, 3); //-x so that the mountains cast correct shadows.
+	math_t::Vec3f32 cameraPosition  = math_t::Vec3f32( 0, 0, 2);
+
+
 
 //after calling the constructor
 	error_type Post_Initialize() override
@@ -179,7 +183,7 @@ private:
 		GetRenderer()->SetParams(clearColor);
 
 	//create and set the camera
-		meshSystem->SetCamera(createCamera(true, 0.1f, 100.0f, 90.0f, math_t::Vec3f32(0, 0, 2)));
+		meshSystem->SetCamera(createCamera(true, 0.1f, 100.0f, 90.0f, cameraPosition));
 
 	//set up the mouse and keyboard
 		registerInputDevices();
@@ -314,10 +318,10 @@ private:
 		globe->GetMesh()->GetComponent<math_cs::Transform>()->SetOrientation(temp);
 
 	//increase earth's rotation
-		earthAngle += 0.001f;
+		earthAngle += earthAngleDelta;
 
 	//increase cloud's rotation
-		cloudAngle -= 0.0001f;
+		cloudAngle += cloudAngleDelta;
 		updateCloudRotation();
 
 	//call Application's DoUpdate for camera controls

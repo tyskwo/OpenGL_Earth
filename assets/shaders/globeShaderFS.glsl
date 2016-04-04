@@ -36,7 +36,7 @@ void main()
 	vertNorm_interpolated = normalize(v_vertNormal);
 
 //get the diffuse multiplier
-	float diffuseMultiplier = dot(vertNorm_interpolated, v_lightDirection);
+	float diffuseMultiplier = dot(vertNorm_interpolated * color_normals, v_lightDirection);
 
 //get the interpolated color based on the diffuse texture, night texture, and clouds texture.
 	color = (color_diffuse * diffuseMultiplier + color_night * (1.0f - diffuseMultiplier) + color_clouds * (diffuseMultiplier));
@@ -51,7 +51,4 @@ void main()
 	o_color.r = pow(o_color.r, 1.0 / 2.2);
 	o_color.g = pow(o_color.g, 1.0 / 2.2);
 	o_color.b = pow(o_color.b, 1.0 / 2.2);
-
-
-	//need to include normals in color calculation
 }

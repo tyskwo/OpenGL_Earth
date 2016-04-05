@@ -159,7 +159,7 @@ private:
 
 	//initialize the objects
 		globe  = new Object(scene, "/models/globe.obj",  globeMaterial);
-		skybox = new Object(scene, "/models/skybox.obj", skyboxMaterial);
+		skybox = new Object(scene, "/models/smallSkybox.obj", skyboxMaterial);
 
 		return Application::Post_Initialize();
 	}

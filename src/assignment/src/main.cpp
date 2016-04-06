@@ -33,7 +33,7 @@ namespace
 class Program : public Application
 {
 public:
-	Program() : Application("globe lab") { }
+	Program() : Application("Earth") { }
 
 
 private:
@@ -135,11 +135,13 @@ private:
 
 
 //program specific variables
-	float			earthAngle      =  0.0f;
-	float			earthAngleDelta =  0.001f;
-	float			cloudAngle      =  0.0f;
-	float			cloudAngleDelta = -0.0001f;	//weather generally travels west->east.
-	float			starThreshold   =  0.999f;	//any value above this will be made a star
+	float			earthAngle       =  0.0f;
+	float			earthAngleDelta  =  0.001f;
+	float			cloudAngle       =  0.0f;
+	float			cloudAngleDelta  = -0.0001f;	//weather generally travels west->east.
+	float			starTwinkleTime  =  0.0f;		//current time
+	float			starTwinkleDelta =  0.005f;	
+
 	math_t::Vec3f32 lightPosition   = math_t::Vec3f32(-1, 0, 3); //-x so that the mountains cast correct shadows.
 	math_t::Vec3f32 cameraPosition  = math_t::Vec3f32( 0, 0, 2);
 
@@ -234,7 +236,7 @@ private:
 	{
 		setLightPosition();
 		setCloudRotation();
-		setStarThreshold();
+		setStarTwinkle();
 		setTextures();
 	}
 
@@ -254,18 +256,24 @@ private:
 		globeMaterial->GetShaderOperator()->AddUniform(*u_cloudAngle);
 	}
 
-//set the shader's sta threshold
-	void setStarThreshold()
-	{
-		gfx_gl::uniform_vso u_starThreshold; u_starThreshold->SetName("u_starThreshold").SetValueAs(starThreshold);
-
-		skyboxMaterial->GetShaderOperator()->AddUniform(*u_starThreshold);
-	}
-
 //update the clouds rotation
 	void updateCloudRotation()
 	{
 		gfx_gl::f_shader_operator::GetUniform(*globeMaterial->GetShaderOperator(), "u_cloudAngle")->SetValueAs(cloudAngle);
+	}
+
+//set the shader's twinkle
+	void setStarTwinkle()
+	{
+		gfx_gl::uniform_vso u_twinkleTime; u_twinkleTime->SetName("u_twinkleTime").SetValueAs(starTwinkleTime);
+
+		skyboxMaterial->GetShaderOperator()->AddUniform(*u_twinkleTime);
+	}
+
+//update the clouds rotation
+	void updateStarTwinkle()
+	{
+		gfx_gl::f_shader_operator::GetUniform(*skyboxMaterial->GetShaderOperator(), "u_twinkleTime")->SetValueAs(starTwinkleTime);
 	}
 
 //set the globe's texture uniforms
@@ -299,10 +307,24 @@ private:
 		globeMaterial->GetShaderOperator()->AddUniform(*normals);
 	}
 
+//set the skybox texture uniform
+	void setSkyboxTextures()
+	{
+	//load the texture
+		auto skyboxTexture = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/skybox.png")));
+
+	//set the uniform
+		gfx_gl::uniform_vso skybox; skybox->SetName("skybox_diffuse").SetValueAs(*skyboxTexture);
+
+	//add to shader
+		skyboxMaterial->GetShaderOperator()->AddUniform(*skybox);
+	}
+
 //set the texture uniforms in the shaders
 	void setTextures()
 	{
 		setGlobeTextures();
+		setSkyboxTextures();
 	}
 
 //slowly rotate the earth
@@ -319,6 +341,10 @@ private:
 	//increase cloud's rotation
 		cloudAngle += cloudAngleDelta;
 		updateCloudRotation();
+
+	//increase time for twinkle
+		starTwinkleTime += starTwinkleDelta;
+		updateStarTwinkle();
 
 	//call Application's DoUpdate for camera controls
 		Application::DoUpdate(delta);

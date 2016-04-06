@@ -139,6 +139,7 @@ private:
 	float			earthAngleDelta =  0.001f;
 	float			cloudAngle      =  0.0f;
 	float			cloudAngleDelta = -0.0001f;	//weather generally travels west->east.
+	float			starThreshold   =  0.999f;	//any value above this will be made a star
 	math_t::Vec3f32 lightPosition   = math_t::Vec3f32(-1, 0, 3); //-x so that the mountains cast correct shadows.
 	math_t::Vec3f32 cameraPosition  = math_t::Vec3f32( 0, 0, 2);
 
@@ -159,7 +160,7 @@ private:
 
 	//initialize the objects
 		globe  = new Object(scene, "/models/globe.obj",  globeMaterial);
-		skybox = new Object(scene, "/models/smallSkybox.obj", skyboxMaterial);
+		skybox = new Object(scene, "/models/skybox.obj", skyboxMaterial);
 
 		return Application::Post_Initialize();
 	}
@@ -233,6 +234,7 @@ private:
 	{
 		setLightPosition();
 		setCloudRotation();
+		setStarThreshold();
 		setTextures();
 	}
 
@@ -250,6 +252,14 @@ private:
 		gfx_gl::uniform_vso u_cloudAngle; u_cloudAngle->SetName("u_cloudAngle").SetValueAs(cloudAngle);
 
 		globeMaterial->GetShaderOperator()->AddUniform(*u_cloudAngle);
+	}
+
+//set the shader's sta threshold
+	void setStarThreshold()
+	{
+		gfx_gl::uniform_vso u_starThreshold; u_starThreshold->SetName("u_starThreshold").SetValueAs(starThreshold);
+
+		skyboxMaterial->GetShaderOperator()->AddUniform(*u_starThreshold);
 	}
 
 //update the clouds rotation
@@ -289,24 +299,10 @@ private:
 		globeMaterial->GetShaderOperator()->AddUniform(*normals);
 	}
 
-//set the skybox texture uniform
-	void setSkyboxTextures()
-	{
-	//load the texture
-		auto skyboxTexture = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/space-skybox.png")));
-
-	//set the uniform
-		gfx_gl::uniform_vso skybox; skybox->SetName("skybox_diffuse").SetValueAs(*skyboxTexture);
-
-	//add to shader
-		skyboxMaterial->GetShaderOperator()->AddUniform(*skybox);
-	}
-
 //set the texture uniforms in the shaders
 	void setTextures()
 	{
 		setGlobeTextures();
-		setSkyboxTextures();
 	}
 
 //slowly rotate the earth

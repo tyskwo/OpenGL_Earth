@@ -7,7 +7,8 @@
 	uniform mat4 u_vp;				//the view projection matrix
 	uniform mat4 u_model;			//the model
 
-	out		vec2 v_texCoord;		//the vertex texture coordinate
+	out		vec2 v_position;		//the vertex texture coordinate
+	out		mat3 v_vertTBN;			//the vertex tbn matrix
 
 void main()
 { 
@@ -15,7 +16,8 @@ void main()
 	gl_Position = u_vp * u_model * vec4(a_vertPos, 1);
 
 //pass the texture coordinate through to the fragment shader
-	v_texCoord = a_vertTexCoord0;
+	v_position = a_vertTexCoord0;
 
-	//a_vertTBN not found (because it isn't used)
+//pass through the TBN matrix
+	v_vertTBN = a_vertTBN;
 }

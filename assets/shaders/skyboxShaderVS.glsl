@@ -8,7 +8,7 @@
 	uniform mat4 u_model;			//the model
 
 	out		vec2 v_position;		//the vertex texture coordinate
-	out		mat3 v_vertTBN;			//the vertex tbn matrix
+	out		vec2 v_screenPosition;	//the vertex position on the screen
 
 void main()
 { 
@@ -18,6 +18,6 @@ void main()
 //pass the texture coordinate through to the fragment shader
 	v_position = a_vertTexCoord0;
 
-//pass through the TBN matrix
-	v_vertTBN = a_vertTBN;
+//pass the screen coordinates to the fragment shader
+	v_screenPosition = gl_Position.xy;
 }

@@ -15,12 +15,12 @@ using namespace tloc;
 namespace
 {
 //globe vertex and fragment shader paths
-	core_str::String globeShaderPathVS("/shaders/globeShaderVS.glsl");
-	core_str::String globeShaderPathFS("/shaders/globeShaderFS.glsl");
+	core_str::String globeShaderPathVS("/shaders/globeVS.glsl");
+	core_str::String globeShaderPathFS("/shaders/globeFS.glsl");
 
 //skybox vertex and fragment shader paths
-	core_str::String skyboxShaderPathVS("/shaders/skyboxShaderVS.glsl");
-	core_str::String skyboxShaderPathFS("/shaders/skyboxShaderFS.glsl");
+	core_str::String skyboxShaderPathVS("/shaders/skyboxVS.glsl");
+	core_str::String skyboxShaderPathFS("/shaders/skyboxFS.glsl");
 };
 
 
@@ -52,8 +52,8 @@ private:
 	private:
 		Scene				scene;			//reference to the scene
 		core_str::String	objectPath;		//the path to the obj file
-		Entity				mesh;			//the actual object
-		Material			material;		//the material of the object
+		Entity				mesh;			//the object's mesh
+		Material			material;		//the object's material
 
 	public:
 	//intialize and create the object
@@ -69,13 +69,17 @@ private:
 		}
 
 	//getters for the mesh and material
-		Entity	 GetMesh()		{ return mesh; }
+		Entity	 GetMesh()		{ return mesh;     }
 		Material GetMaterial()  { return material; }
+
+	//setters for the mesh and material
+		void SetMesh(Entity mesh)			    { this->mesh     = mesh;                 }
+		void SetMesh(core_str::String filePath) { this->mesh     = createMesh(filePath); }
+		void SetMaterial(Material material)     { this->material = material;		     }
 
 	//get the path of the given string
 		core_io::Path getPath(core_str::String objectPath)
 		{
-		//get the path to the object file
 			return core_io::Path(core_str::String(GetAssetsPath()) + objectPath);
 				//any place you want to pass a string or const char, use a core_io::String (which is a BufferArg), converts to and from both.
 		}
@@ -130,8 +134,8 @@ private:
 	Material globeMaterial;		//the globe material
 	Material skyboxMaterial;	//the skybox material
 
-	Object* globe;  //the globe
-	Object* skybox; //the 'space' box
+	Object*  globe;				//the globe
+	Object*  skybox;			//the 'space' box
 
 
 //program specific variables
@@ -154,7 +158,7 @@ private:
 		loadScene();
 
 	//create a default material and set the light position
-		globeMaterial  = createMaterial(globeShaderPathVS,  globeShaderPathFS);
+		globeMaterial  = createMaterial( globeShaderPathVS,  globeShaderPathFS);
 		skyboxMaterial = createMaterial(skyboxShaderPathVS, skyboxShaderPathFS);
 
 	//add uniforms to the shaders
@@ -282,8 +286,8 @@ private:
 	//parameter to repeat wrap the cloud texture
 		gfx_gl::TextureObject::Params cloudParams;
 		cloudParams.Wrap_S<gfx_gl::p_texture_object::wrap_technique::Repeat>()
-			.Wrap_T<gfx_gl::p_texture_object::wrap_technique::Repeat>()
-			.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
+				   .Wrap_T<gfx_gl::p_texture_object::wrap_technique::Repeat>()
+				   .Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
 
 	//load the textures
 		auto earthTexture = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_diffuse.jpg")));

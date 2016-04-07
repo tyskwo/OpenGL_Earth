@@ -23,8 +23,8 @@ void main()
 //get the color from the texture at the given coordinate
 	color = texture2D(skybox_diffuse, vec2(v_position.s, 1 - v_position.t)).rgb;
 
-//twinkle the stars based on their position														 V just to get rid of the warning of unused uniform.
-	color *= abs(cos(u_twinkleTime + random(v_screenPosition.xx) + random(v_screenPosition.yy) + random(v_vertTBN[2].zx)));
+//twinkle the stars based on their position														
+	color *= abs(cos(u_twinkleTime + random(v_screenPosition.xx) + random(v_screenPosition.yy) + random(v_vertTBN[2].zx))); // use TBN matrix to get rid of the warning of unused uniform.
 
 //pass the color to the renderer
 	o_color = color;

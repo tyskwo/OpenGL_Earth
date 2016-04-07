@@ -10,7 +10,7 @@
 	uniform sampler2D earth_clouds;				//texture that holds the earth's clouds
 	uniform sampler2D earth_normals;			//texture for earth normals
 
-	uniform float	  u_cloudAngle;				//amount to Shift clouds by
+	uniform float	  u_cloudAngle;				//amount to shift clouds by
 
 			vec3	  color;					//the color of the sphere
 			vec3	  vertNorm_interpolated;	//the interpolated normal from each vertex
@@ -39,7 +39,7 @@ void main()
 	float diffuseMultiplier  = dot(vertNorm_interpolated * color_normals, v_lightDirection);
 	float specularMultiplier = dot(vertNorm_interpolated,				  v_lightDirection);
 
-//get the interpolated color based on the diffuse texture, night texture, and clouds texture.
+//get the interpolated color based on the diffuse texture, night texture, and clouds texture
 	color = (color_diffuse * diffuseMultiplier + color_night * (1.0f - diffuseMultiplier) + color_clouds * (diffuseMultiplier));
 
 //get the specular value based on the specular intensity and specular mask.

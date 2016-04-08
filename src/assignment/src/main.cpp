@@ -163,15 +163,30 @@ private:
 		loadScene();
 
 		//create a default material and set the light position
-		globeMaterial = createMaterial(globeShaderPathVS, globeShaderPathFS);
-		skyboxMaterial = createMaterial(skyboxShaderPathVS, skyboxShaderPathFS);
+		globeMaterial = createMaterial(scene, globeShaderPathVS, globeShaderPathFS);
+		skyboxMaterial = createMaterial(skyBoxScene, skyboxShaderPathVS, skyboxShaderPathFS);
 
 		//add uniforms to the shaders
 		addUniforms();
 
 		//initialize the objects
 		globe = new Object(scene, "/models/globe.obj", globeMaterial);
-		skybox = new Object(scene, "/models/skybox.obj", skyboxMaterial);
+		skybox = new Object(skyBoxScene, "/models/skybox.obj", skyboxMaterial);
+
+		
+		auto skyBoxMesh = skybox->GetMesh();
+			
+		skyBoxMesh->GetComponent<gfx_cs::Mesh>()->
+			SetEnableUniform<gfx_cs::p_renderable::uniforms::k_modelMatrix>(false);
+		skyBoxMesh->GetComponent<gfx_cs::Material>()->
+			SetEnableUniform<gfx_cs::p_material::uniforms::k_viewMatrix>();
+		skyBoxMesh->GetComponent<gfx_cs::Material>()->
+			SetEnableUniform<gfx_cs::p_material::uniforms::k_projectionMatrix>();
+		skyBoxMesh->GetComponent<gfx_cs::Material>()->
+			SetEnableUniform<gfx_cs::p_material::uniforms::k_viewProjectionMatrix>(false);
+		
+
+		skyBoxScene->Initialize();
 
 		return Application::Post_Initialize();
 	}
@@ -185,8 +200,6 @@ private:
 		meshSystem = scene->AddSystem<gfx_cs::MeshRenderSystem>();			//add mesh render system	
 		scene->AddSystem<gfx_cs::ArcBallSystem>();							//add the arc ball system
 		cameraControl = scene->AddSystem<input_cs::ArcBallControlSystem>();	//add the control system
-
-
 
 
 
@@ -206,23 +219,24 @@ private:
 		skyBoxMeshRenderSystem->SetRenderer(SkyBoxRenderer);
 
 
-
-
-
-
 		//set renderer
 		meshSystem->SetRenderer(GetRenderer());
+		skyBoxMeshRenderSystem->SetRenderer(SkyBoxRenderer);
 
 		//set the background color
 		gfx_rend::Renderer::Params clearColor(GetRenderer()->GetParams());
 		clearColor.SetClearColor(gfx_t::Color(0.06f, 0.06f, 0.08f, 1.0f));
 		GetRenderer()->SetParams(clearColor);
 
+		auto camera = createCamera(true, 0.1f, 100.0f, 90.0f, cameraPosition);
+
 		//create and set the camera
-		meshSystem->SetCamera(createCamera(true, 0.1f, 100.0f, 90.0f, cameraPosition));
+		meshSystem->SetCamera(camera);
+		skyBoxMeshRenderSystem->SetCamera(camera);
 
 		//set up the mouse and keyboard
 		registerInputDevices();
+
 	}
 
 	//create a camera
@@ -248,9 +262,9 @@ private:
 	}
 
 	//create material
-	Material createMaterial(core_str::String vertexShader, core_str::String fragmentShader)
+	Material createMaterial(Scene sceneReference, core_str::String vertexShader, core_str::String fragmentShader)
 	{
-		auto materialEntity = scene->CreatePrefab<pref_gfx::Material>()
+		auto materialEntity = sceneReference->CreatePrefab<pref_gfx::Material>()
 			.AssetsPath(GetAssetsPath())
 			.Create(core_io::Path(vertexShader), core_io::Path(fragmentShader));
 
@@ -362,10 +376,10 @@ private:
 
 	void Pre_Render(sec_type) override
 	{
-		//skyBoxScene->Process();
+		skyBoxScene->Process();
 
-		//SkyBoxRenderer->ApplyRenderSettings();
-		//SkyBoxRenderer->Render();
+		SkyBoxRenderer->ApplyRenderSettings();
+		SkyBoxRenderer->Render();
 	}
 
 	//slowly rotate the earth

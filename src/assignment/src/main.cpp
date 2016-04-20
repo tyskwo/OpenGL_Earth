@@ -21,6 +21,16 @@ namespace
 	//skybox vertex and fragment shader paths
 	core_str::String skyboxShaderPathVS("/shaders/skyboxVS.glsl");
 	core_str::String skyboxShaderPathFS("/shaders/skyboxFS.glsl");
+
+	//bloom fragment shader paths
+//	core_str::String skyboxShaderPathFS("/shaders/bloomFS.glsl");
+
+
+
+	core_str::String shaderPathOneTextureVS("/shaders/tlocOneTextureVS.glsl");
+	core_str::String shaderPathOneTextureFS("/shaders/tlocOneTextureFS.glsl");
+
+
 };
 
 
@@ -140,6 +150,20 @@ private:
 	Object*  skybox;			//the 'space' box
 
 
+
+
+
+	gfx::rtt_sptr SceneTexture;
+	gfx_rend::renderer_sptr sceneTextRend;
+
+	tloc::core::smart_ptr::SharedPtr<gfx_gl::TextureObject> sceneTextObj;
+
+	tloc::core::smart_ptr::VirtualPtr<gfx_cs::MeshRenderSystem> quadSys;
+	
+
+
+
+
 	//program specific variables
 	float			earthAngle = 0.0f;
 	float			earthAngleDelta = 0.001f;
@@ -166,6 +190,23 @@ private:
 		globeMaterial = createMaterial(scene, globeShaderPathVS, globeShaderPathFS);
 		skyboxMaterial = createMaterial(skyBoxScene, skyboxShaderPathVS, skyboxShaderPathFS);
 
+
+
+
+
+		SceneTexture = core_sptr::MakeShared<gfx::Rtt>(core_ds::MakeTuple(800, 600));
+		sceneTextObj = SceneTexture->AddColorAttachment(0);
+		SceneTexture->AddDepthAttachment();
+		sceneTextRend = SceneTexture->GetRenderer();
+
+		quadSys = scene->AddSystem<gfx_cs::MeshRenderSystem>();
+		quadSys->SetRenderer(GetRenderer());
+
+
+
+
+
+
 		//add uniforms to the shaders
 		addUniforms();
 
@@ -173,7 +214,7 @@ private:
 		globe = new Object(scene, "/models/globe.obj", globeMaterial);
 		skybox = new Object(skyBoxScene, "/models/skybox.obj", skyboxMaterial);
 
-		
+
 		auto skyBoxMesh = skybox->GetMesh();
 			
 		skyBoxMesh->GetComponent<gfx_cs::Mesh>()->
@@ -185,7 +226,6 @@ private:
 		skyBoxMesh->GetComponent<gfx_cs::Material>()->
 			SetEnableUniform<gfx_cs::p_material::uniforms::k_viewProjectionMatrix>(false);
 		
-
 		skyBoxScene->Initialize();
 
 		return Application::Post_Initialize();
@@ -205,9 +245,36 @@ private:
 
 
 
+
+
+		gfx_rend::Renderer::Params oldRenderParams(GetRenderer()->GetParams());
+
+
+		gfx_rend::Renderer::Params sceneParams(GetRenderer()->GetParams());
+		sceneParams.SetClearColor(gfx_t::Color(0.5f, 0.5f, 1.0f, 1.0f))
+			.Enable< gfx_rend::p_renderer::enable_disable::DepthTest>()
+			.AddClearBit<gfx_rend::p_renderer::clear::ColorBufferBit>()
+			.AddClearBit<gfx_rend::p_renderer::clear::DepthBufferBit>();
+
+
+
+
+		GetRenderer()->SetParams(sceneParams);
+
+		sceneTextRend = core_sptr::MakeShared<gfx_rend::Renderer>(oldRenderParams);
+
+
+
+
+
+
+
+
 		gfx_rend::Renderer::Params skyboxRenderParams(GetRenderer()->GetParams());
 		skyboxRenderParams.SetDepthWrite(false);
 		SkyBoxRenderer = core_sptr::MakeShared<gfx_rend::Renderer>(skyboxRenderParams);
+
+		
 
 		auto renderParams = GetRenderer()->GetParams();
 		renderParams.RemoveClearBit<gfx_rend::p_renderer::clear::ColorBufferBit>();
@@ -220,7 +287,17 @@ private:
 
 
 		//set renderer
-		meshSystem->SetRenderer(GetRenderer());
+
+
+
+		meshSystem->SetRenderer(sceneTextRend);
+
+
+
+
+
+
+		//meshSystem->SetRenderer(GetRenderer());
 		skyBoxMeshRenderSystem->SetRenderer(SkyBoxRenderer);
 
 		//set the background color
@@ -285,6 +362,19 @@ private:
 		setCloudRotation();
 		setStarTwinkle();
 		setTextures();
+
+
+
+		
+		gfx_gl::uniform_vso u_rtt;
+		u_rtt->SetName("s_texture").SetValueAs(*sceneTextObj);
+
+
+		auto quadEnt = scene->CreatePrefab<pref_gfx::Quad>().DispatchTo(quadSys.get()).Create();
+		scene->CreatePrefab<pref_gfx::Material>().AddUniform(u_rtt.get())
+			.Add(quadEnt, core_io::Path(GetAssetsPath() + shaderPathOneTextureVS),
+			core_io::Path(GetAssetsPath() + shaderPathOneTextureFS));
+			
 	}
 
 	//set the shader's light position

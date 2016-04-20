@@ -19,6 +19,9 @@ namespace
 
 	core_str::String textureVS("/shaders/textureVS.glsl");
 	core_str::String textureFS("/shaders/textureFS.glsl");
+
+	core_str::String bloomVS("/shaders/bloomVS.glsl");
+	core_str::String bloomFS("/shaders/bloomFS.glsl");
 };
 
 
@@ -133,23 +136,22 @@ private:
 
 	//variables
 	Scene					scene;			//the scene from the application
-	MeshRenderSystem		meshSystem;		//the render system
-	MeshRenderSystem		quadSystem;		//the render system
+	MeshRenderSystem		meshSystem,		//the render systems
+		                    quadSystem;
 	ArcBallControlSystem	cameraControl;	//the camera controls
 
 
-	Material defaultMaterial,
-		     textureMaterial; //the default material with per-fragment lighting
+	Material defaultMaterial, //the materials
+		     textureMaterial,
+			 bloomMaterial; 
 
 	Object* sphere; //the sphere
 
-	gfx_gl::uniform_vso lightPosition; //position of the light
 
 
 
-
-	gfx::rtt_sptr m_rtt;
-	TextureObject toRtt;
+	gfx::rtt_sptr rtt;
+	TextureObject rtt_normalColors, rtt_brightColors;
 
 
 
@@ -161,12 +163,14 @@ private:
 
 		//create a default material and set the light position
 		defaultMaterial = createMaterial(shaderPathVS, shaderPathFS);
-		textureMaterial = createMaterial(textureVS, textureFS);
+		textureMaterial = createMaterial(bloomVS,    bloomFS);
+		//bloomMaterial   = createMaterial(bloomVS,      bloomFS);
 
 
 		//set the light position
 		setLightPosition(math_t::Vec3f32(0.0f, 0.0f, 1.0f));
-		setRenderTexture();
+		setNormalColorTexture();
+		setBrightColorTexture();
 
 		//initialize the sphere
 		sphere = new Object(scene, meshSystem, "/models/globe.obj", defaultMaterial);
@@ -176,11 +180,24 @@ private:
 		math_t::Rectf_c rect(math_t::Rectf_c::width(GetWindow()->GetAspectRatio().Get() * 2.0f),
 			math_t::Rectf_c::height(GetWindow()->GetAspectRatio().Get() * 2.0f));
 
-		core_cs::entity_vptr q = scene->CreatePrefab<pref_gfx::Quad>()
+
+		core_cs::entity_vptr splitQuad = scene->CreatePrefab<pref_gfx::Quad>()
 			.DispatchTo(quadSystem.get())
 			.Dimensions(rect).Create();
 
-		scene->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(q, textureMaterial));
+		//core_cs::entity_vptr bloomQuad = scene->CreatePrefab<pref_gfx::Quad>()
+			//.DispatchTo(quadSystem.get())
+			//.Dimensions(rect).Create();
+
+		//core_cs::entity_vptr finalQuad = scene->CreatePrefab<pref_gfx::Quad>()
+			//.DispatchTo(quadSystem.get())
+			//.Dimensions(rect).Create();
+
+
+		scene->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(splitQuad, textureMaterial));
+		//scene->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(bloomQuad, bloomMaterial));
+		//scene->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(finalQuad, textureMaterial));
+
 
 
 		return Application::Post_Initialize();
@@ -189,18 +206,21 @@ private:
 	//load the scene
 	void loadScene()
 	{
-		m_rtt = core_sptr::MakeShared<gfx::Rtt>(core_ds::MakeTuple(1024, 1024));
-		toRtt = m_rtt->AddColorAttachment<0, gfx_t::color_u16_rgba>();
-		{
-			auto toRttParams = toRtt->GetParams();
-			toRttParams.MinFilter<gfx_gl::p_texture_object::filter::Nearest>();
-			toRttParams.MagFilter<gfx_gl::p_texture_object::filter::Nearest>();
-			toRtt->SetParams(toRttParams);
-			toRtt->UpdateParameters();
-		}
+		rtt = core_sptr::MakeShared<gfx::Rtt>(core_ds::MakeTuple(1024, 1024));
+		rtt_normalColors = rtt->AddColorAttachment<0, gfx_t::color_u16_rgba>();
+		rtt_brightColors = rtt->AddColorAttachment<1, gfx_t::color_u16_rgba>();
 
-		m_rtt->AddDepthAttachment();
-		auto rttRend = m_rtt->GetRenderer();
+		auto toRttParams = rtt_normalColors->GetParams();
+		toRttParams.MinFilter<gfx_gl::p_texture_object::filter::Nearest>();
+		toRttParams.MagFilter<gfx_gl::p_texture_object::filter::Nearest>();
+
+		rtt_normalColors->SetParams(toRttParams);
+		rtt_brightColors->SetParams(toRttParams);
+		rtt_normalColors->UpdateParameters();
+		rtt_brightColors->UpdateParameters();
+
+		rtt->AddDepthAttachment();
+		auto rttRend = rtt->GetRenderer();
 
 
 
@@ -215,11 +235,6 @@ private:
 	//set renderer
 		meshSystem->SetRenderer(rttRend);
 		quadSystem->SetRenderer(GetRenderer());
-
-	//set the background color
-		gfx_rend::Renderer::Params clearColor(GetRenderer()->GetParams());
-		clearColor.SetClearColor(gfx_t::Color(0.5f, 0.5f, 1.0f, 1.0f));
-		GetRenderer()->SetParams(clearColor);
 
 	//create and set the camera
 		meshSystem->SetCamera(createCamera(true, 0.1f, 100.0f, 90.0f, math_t::Vec3f32(0, 0, 5.0f)));
@@ -272,18 +287,24 @@ private:
 
 		defaultMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
 	}
-//set the shader's light positions
-	void setRenderTexture()
-	{
-		gfx_gl::uniform_vso u_toRtt; u_toRtt->SetName("s_texture").SetValueAs(*toRtt);
 
-		textureMaterial->GetShaderOperator()->AddUniform(*u_toRtt);
+	void setNormalColorTexture()
+	{
+		gfx_gl::uniform_vso u_normal; u_normal->SetName("texture").SetValueAs(*rtt_normalColors);
+
+		textureMaterial->GetShaderOperator()->AddUniform(*u_normal);
+	}
+	void setBrightColorTexture()
+	{
+		gfx_gl::uniform_vso u_normal; u_normal->SetName("texture").SetValueAs(*rtt_brightColors);
+
+		textureMaterial->GetShaderOperator()->AddUniform(*u_normal);
 	}
 
 	void Pre_Render(sec_type) override
 	{
-		m_rtt->GetRenderer()->ApplyRenderSettings();
-		m_rtt->GetRenderer()->Render();
+		rtt->GetRenderer()->ApplyRenderSettings();
+		rtt->GetRenderer()->Render();
 	}
 };
 

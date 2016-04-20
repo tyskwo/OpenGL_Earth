@@ -14,23 +14,11 @@ using namespace tloc;
 //shader paths
 namespace
 {
-	//globe vertex and fragment shader paths
-	core_str::String globeShaderPathVS("/shaders/globeVS.glsl");
-	core_str::String globeShaderPathFS("/shaders/globeFS.glsl");
+	core_str::String shaderPathVS("/shaders/sphereVS.glsl");
+	core_str::String shaderPathFS("/shaders/sphereFS.glsl");
 
-	//skybox vertex and fragment shader paths
-	core_str::String skyboxShaderPathVS("/shaders/skyboxVS.glsl");
-	core_str::String skyboxShaderPathFS("/shaders/skyboxFS.glsl");
-
-	//bloom fragment shader paths
-//	core_str::String skyboxShaderPathFS("/shaders/bloomFS.glsl");
-
-
-
-	core_str::String shaderPathOneTextureVS("/shaders/tlocOneTextureVS.glsl");
-	core_str::String shaderPathOneTextureFS("/shaders/tlocOneTextureFS.glsl");
-
-
+	core_str::String textureVS("/shaders/textureVS.glsl");
+	core_str::String textureFS("/shaders/textureFS.glsl");
 };
 
 
@@ -38,12 +26,12 @@ namespace
 
 
 /////////////////////////////////////////////////////////////////////////
-// globe lab
+// lighting sample
 
 class Program : public Application
 {
 public:
-	Program() : Application("Earth") { }
+	Program() : Application("bloom") { }
 
 
 private:
@@ -51,9 +39,9 @@ private:
 	//typedefs
 	typedef ecs_ptr																			Scene;
 	typedef core::smart_ptr::VirtualPtr<graphics::component_system::MeshRenderSystem>		MeshRenderSystem;
-	typedef core::smart_ptr::VirtualPtr<graphics::component_system::MeshRenderSystem>		SkyBoxMeshRenderSystem;
 	typedef core::smart_ptr::VirtualPtr<core::component_system::Entity>						Entity;
 	typedef core::smart_ptr::VirtualPtr<input::component_system::ArcBallControlSystem>		ArcBallControlSystem;
+	typedef core::smart_ptr::SharedPtr<tloc::graphics::gl::TextureObject>					TextureObject;
 	typedef gfx_cs::material_sptr 															Material;
 
 
@@ -63,38 +51,35 @@ private:
 	private:
 		Scene				scene;			//reference to the scene
 		core_str::String	objectPath;		//the path to the obj file
-		Entity				mesh;			//the object's mesh
-		Material			material;		//the object's material
+		Entity				mesh;			//the actual object
+		Material			material;		//the material of the object
 
 	public:
 		//intialize and create the object
-		Object(Scene sceneReference, core_str::String filePath, Material materialReference)
+		Object(Scene sceneReference, MeshRenderSystem meshSystem, core_str::String filePath, Material materialReference)
 		{
 			objectPath = filePath;
 			scene = sceneReference;
 
-			mesh = createMesh(objectPath);
+			mesh = createMesh(objectPath, meshSystem);
 			material = materialReference;
 
 			scene->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(mesh, material));
+
+			setMatrix();
 		}
 
 		//getters for the mesh and material
 		Entity	 GetMesh()		{ return mesh; }
 		Material GetMaterial()  { return material; }
 
-		//setters for the mesh and material
-		void SetMesh(Entity mesh)			    { this->mesh = mesh; }
-		void SetMesh(core_str::String filePath) { this->mesh = createMesh(filePath); }
-		void SetMaterial(Material material)     { this->material = material; }
-
 		//get the path of the given string
 		core_io::Path getPath(core_str::String objectPath)
 		{
+			//get the path to the object file
 			return core_io::Path(core_str::String(GetAssetsPath()) + objectPath);
 			//any place you want to pass a string or const char, use a core_io::String (which is a BufferArg), converts to and from both.
 		}
-
 		//load the passed object
 		gfx_med::ObjLoader::vert_cont_type loadObject(core_str::String object)
 		{
@@ -130,54 +115,42 @@ private:
 		}
 
 		//create mesh from given object path
-		Entity createMesh(core_str::String object)
+		Entity createMesh(core_str::String object, MeshRenderSystem meshSystem)
 		{
-			return scene->CreatePrefab<pref_gfx::Mesh>().Create(loadObject(objectPath));
+			return scene->CreatePrefab<pref_gfx::Mesh>().DispatchTo(meshSystem.get()).Create(loadObject(objectPath));
+		}
+
+		void setMatrix()
+		{
+			mesh->GetComponent<gfx_cs::Material>()->SetEnableUniform<gfx_cs::p_material::uniforms::k_viewProjectionMatrix>();
+			mesh->GetComponent<gfx_cs::Material>()->SetEnableUniform<gfx_cs::p_material::uniforms::k_viewMatrix>();
+
+			mesh->GetComponent<gfx_cs::Mesh>()->SetEnableUniform<gfx_cs::p_renderable::uniforms::k_modelMatrix>();
+			mesh->GetComponent<gfx_cs::Mesh>()->SetEnableUniform<gfx_cs::p_renderable::uniforms::k_normalMatrix>();
 		}
 	};
 
 
 	//variables
 	Scene					scene;			//the scene from the application
-	Scene					skyBoxScene;	//scene for skybox
 	MeshRenderSystem		meshSystem;		//the render system
+	MeshRenderSystem		quadSystem;		//the render system
 	ArcBallControlSystem	cameraControl;	//the camera controls
 
-	Material globeMaterial;		//the globe material
-	Material skyboxMaterial;	//the skybox material
 
-	Object*  globe;				//the globe
-	Object*  skybox;			//the 'space' box
+	Material defaultMaterial,
+		     textureMaterial; //the default material with per-fragment lighting
 
+	Object* sphere; //the sphere
 
-
-
-
-	gfx::rtt_sptr SceneTexture;
-	gfx_rend::renderer_sptr sceneTextRend;
-
-	tloc::core::smart_ptr::SharedPtr<gfx_gl::TextureObject> sceneTextObj;
-
-	tloc::core::smart_ptr::VirtualPtr<gfx_cs::MeshRenderSystem> quadSys;
-	
+	gfx_gl::uniform_vso lightPosition; //position of the light
 
 
 
 
-	//program specific variables
-	float			earthAngle = 0.0f;
-	float			earthAngleDelta = 0.001f;
-	float			cloudAngle = 0.0f;
-	float			cloudAngleDelta = -0.0001f;	//weather generally travels west->east.
-	float			starTwinkleTime = 0.0f;		//current time
-	float			starTwinkleDelta = 0.005f;
+	gfx::rtt_sptr m_rtt;
+	TextureObject toRtt;
 
-	math_t::Vec3f32 lightPosition = math_t::Vec3f32(-1, 0, 3); //-x so that the mountains cast correct shadows.
-	math_t::Vec3f32 cameraPosition = math_t::Vec3f32(0, 0, 2);
-
-
-	SkyBoxMeshRenderSystem	skyBoxMeshRenderSystem; //SkyBoxRenderSystem
-	gfx_rend::renderer_sptr SkyBoxRenderer;
 
 
 	//after calling the constructor
@@ -187,46 +160,28 @@ private:
 		loadScene();
 
 		//create a default material and set the light position
-		globeMaterial = createMaterial(scene, globeShaderPathVS, globeShaderPathFS);
-		skyboxMaterial = createMaterial(skyBoxScene, skyboxShaderPathVS, skyboxShaderPathFS);
+		defaultMaterial = createMaterial(shaderPathVS, shaderPathFS);
+		textureMaterial = createMaterial(textureVS, textureFS);
 
 
+		//set the light position
+		setLightPosition(math_t::Vec3f32(0.0f, 0.0f, 1.0f));
+		setRenderTexture();
+
+		//initialize the sphere
+		sphere = new Object(scene, meshSystem, "/models/globe.obj", defaultMaterial);
 
 
+		//create rectangle
+		math_t::Rectf_c rect(math_t::Rectf_c::width(GetWindow()->GetAspectRatio().Get() * 2.0f),
+			math_t::Rectf_c::height(GetWindow()->GetAspectRatio().Get() * 2.0f));
 
-		SceneTexture = core_sptr::MakeShared<gfx::Rtt>(core_ds::MakeTuple(800, 600));
-		sceneTextObj = SceneTexture->AddColorAttachment(0);
-		SceneTexture->AddDepthAttachment();
-		sceneTextRend = SceneTexture->GetRenderer();
+		core_cs::entity_vptr q = scene->CreatePrefab<pref_gfx::Quad>()
+			.DispatchTo(quadSystem.get())
+			.Dimensions(rect).Create();
 
-		quadSys = scene->AddSystem<gfx_cs::MeshRenderSystem>();
-		quadSys->SetRenderer(GetRenderer());
+		scene->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(q, textureMaterial));
 
-
-
-
-
-
-		//add uniforms to the shaders
-		addUniforms();
-
-		//initialize the objects
-		globe = new Object(scene, "/models/globe.obj", globeMaterial);
-		skybox = new Object(skyBoxScene, "/models/skybox.obj", skyboxMaterial);
-
-
-		auto skyBoxMesh = skybox->GetMesh();
-			
-		skyBoxMesh->GetComponent<gfx_cs::Mesh>()->
-			SetEnableUniform<gfx_cs::p_renderable::uniforms::k_modelMatrix>(false);
-		skyBoxMesh->GetComponent<gfx_cs::Material>()->
-			SetEnableUniform<gfx_cs::p_material::uniforms::k_viewMatrix>();
-		skyBoxMesh->GetComponent<gfx_cs::Material>()->
-			SetEnableUniform<gfx_cs::p_material::uniforms::k_projectionMatrix>();
-		skyBoxMesh->GetComponent<gfx_cs::Material>()->
-			SetEnableUniform<gfx_cs::p_material::uniforms::k_viewProjectionMatrix>(false);
-		
-		skyBoxScene->Initialize();
 
 		return Application::Post_Initialize();
 	}
@@ -234,89 +189,46 @@ private:
 	//load the scene
 	void loadScene()
 	{
+		m_rtt = core_sptr::MakeShared<gfx::Rtt>(core_ds::MakeTuple(1024, 1024));
+		toRtt = m_rtt->AddColorAttachment<0, gfx_t::color_u16_rgba>();
+		{
+			auto toRttParams = toRtt->GetParams();
+			toRttParams.MinFilter<gfx_gl::p_texture_object::filter::Nearest>();
+			toRttParams.MagFilter<gfx_gl::p_texture_object::filter::Nearest>();
+			toRtt->SetParams(toRttParams);
+			toRtt->UpdateParameters();
+		}
+
+		m_rtt->AddDepthAttachment();
+		auto rttRend = m_rtt->GetRenderer();
+
+
+
 		scene = GetScene();
-		scene->AddSystem<gfx_cs::MaterialSystem>();							//add material system
-		scene->AddSystem<gfx_cs::CameraSystem>();							//add camera
-		meshSystem = scene->AddSystem<gfx_cs::MeshRenderSystem>();			//add mesh render system	
-		scene->AddSystem<gfx_cs::ArcBallSystem>();							//add the arc ball system
+			     	    scene->AddSystem<  gfx_cs::MaterialSystem      >();	//add material system
+					    scene->AddSystem<  gfx_cs::CameraSystem        >();	//add camera
+		meshSystem =    scene->AddSystem<  gfx_cs::MeshRenderSystem    >();	//add mesh render system	
+		quadSystem =    scene->AddSystem<  gfx_cs::MeshRenderSystem    >();
+					    scene->AddSystem<  gfx_cs::ArcBallSystem       >();	//add the arc ball system
 		cameraControl = scene->AddSystem<input_cs::ArcBallControlSystem>();	//add the control system
 
+	//set renderer
+		meshSystem->SetRenderer(rttRend);
+		quadSystem->SetRenderer(GetRenderer());
 
-
-
-
-
-
-		gfx_rend::Renderer::Params oldRenderParams(GetRenderer()->GetParams());
-
-
-		gfx_rend::Renderer::Params sceneParams(GetRenderer()->GetParams());
-		sceneParams.SetClearColor(gfx_t::Color(0.5f, 0.5f, 1.0f, 1.0f))
-			.Enable< gfx_rend::p_renderer::enable_disable::DepthTest>()
-			.AddClearBit<gfx_rend::p_renderer::clear::ColorBufferBit>()
-			.AddClearBit<gfx_rend::p_renderer::clear::DepthBufferBit>();
-
-
-
-
-		GetRenderer()->SetParams(sceneParams);
-
-		sceneTextRend = core_sptr::MakeShared<gfx_rend::Renderer>(oldRenderParams);
-
-
-
-
-
-
-
-
-		gfx_rend::Renderer::Params skyboxRenderParams(GetRenderer()->GetParams());
-		skyboxRenderParams.SetDepthWrite(false);
-		SkyBoxRenderer = core_sptr::MakeShared<gfx_rend::Renderer>(skyboxRenderParams);
-
-		
-
-		auto renderParams = GetRenderer()->GetParams();
-		renderParams.RemoveClearBit<gfx_rend::p_renderer::clear::ColorBufferBit>();
-		GetRenderer()->SetParams(renderParams);
-
-		skyBoxScene = core_sptr::MakeShared<core_cs::ECS>();
-		skyBoxScene->AddSystem<gfx_cs::MaterialSystem>();							//add material system
-		skyBoxMeshRenderSystem = skyBoxScene->AddSystem<gfx_cs::MeshRenderSystem>();	//add mesh render system
-		skyBoxMeshRenderSystem->SetRenderer(SkyBoxRenderer);
-
-
-		//set renderer
-
-
-
-		meshSystem->SetRenderer(sceneTextRend);
-
-
-
-
-
-
-		//meshSystem->SetRenderer(GetRenderer());
-		skyBoxMeshRenderSystem->SetRenderer(SkyBoxRenderer);
-
-		//set the background color
+	//set the background color
 		gfx_rend::Renderer::Params clearColor(GetRenderer()->GetParams());
-		clearColor.SetClearColor(gfx_t::Color(0.06f, 0.06f, 0.08f, 1.0f));
+		clearColor.SetClearColor(gfx_t::Color(0.5f, 0.5f, 1.0f, 1.0f));
 		GetRenderer()->SetParams(clearColor);
 
-		auto camera = createCamera(true, 0.1f, 100.0f, 90.0f, cameraPosition);
+	//create and set the camera
+		meshSystem->SetCamera(createCamera(true, 0.1f, 100.0f, 90.0f, math_t::Vec3f32(0, 0, 5.0f)));
 
-		//create and set the camera
-		meshSystem->SetCamera(camera);
-		skyBoxMeshRenderSystem->SetCamera(camera);
-
-		//set up the mouse and keyboard
+	//set up the mouse and keyboard
 		registerInputDevices();
-
 	}
 
-	//create a camera
+//create a camera
 	entity_ptr createCamera(bool isPerspectiveView, float nearPlane, float farPlane, float verticalFOV_degrees, math_t::Vec3f32 position)
 	{
 		entity_ptr cameraEntity = scene->CreatePrefab<pref_gfx::Camera>()
@@ -337,162 +249,41 @@ private:
 
 		return cameraEntity;
 	}
-
-	//create material
-	Material createMaterial(Scene sceneReference, core_str::String vertexShader, core_str::String fragmentShader)
+//create material
+	Material createMaterial(core_str::String vertexShader, core_str::String fragmentShader)
 	{
-		auto materialEntity = sceneReference->CreatePrefab<pref_gfx::Material>()
+		auto materialEntity = scene->CreatePrefab<pref_gfx::Material>()
 			.AssetsPath(GetAssetsPath())
 			.Create(core_io::Path(vertexShader), core_io::Path(fragmentShader));
 
 		return materialEntity->GetComponent<gfx_cs::Material>();
 	}
-
-	//create the mouse and keyboard
+//create the mouse and keyboard
 	void registerInputDevices()
 	{
 		GetKeyboard()->Register(&*cameraControl);
 		GetMouse()->Register(&*cameraControl);
 	}
 
-	//add the uniforms to the shaders
-	void addUniforms()
+//set the shader's light positions
+	void setLightPosition(math_t::Vec3f32 position)
 	{
-		setLightPosition();
-		setCloudRotation();
-		setStarTwinkle();
-		setTextures();
+		gfx_gl::uniform_vso u_lightPosition; u_lightPosition->SetName("u_lightPosition").SetValueAs(position);
 
-
-
-		
-		gfx_gl::uniform_vso u_rtt;
-		u_rtt->SetName("s_texture").SetValueAs(*sceneTextObj);
-
-
-		auto quadEnt = scene->CreatePrefab<pref_gfx::Quad>().DispatchTo(quadSys.get()).Create();
-		scene->CreatePrefab<pref_gfx::Material>().AddUniform(u_rtt.get())
-			.Add(quadEnt, core_io::Path(GetAssetsPath() + shaderPathOneTextureVS),
-			core_io::Path(GetAssetsPath() + shaderPathOneTextureFS));
-			
+		defaultMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
 	}
-
-	//set the shader's light position
-	void setLightPosition()
+//set the shader's light positions
+	void setRenderTexture()
 	{
-		gfx_gl::uniform_vso u_lightPosition; u_lightPosition->SetName("u_lightPosition").SetValueAs(lightPosition);
+		gfx_gl::uniform_vso u_toRtt; u_toRtt->SetName("s_texture").SetValueAs(*toRtt);
 
-		globeMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
-	}
-
-	//set the shader's cloud rotation
-	void setCloudRotation()
-	{
-		gfx_gl::uniform_vso u_cloudAngle; u_cloudAngle->SetName("u_cloudAngle").SetValueAs(cloudAngle);
-
-		globeMaterial->GetShaderOperator()->AddUniform(*u_cloudAngle);
-	}
-
-	//update the clouds rotation
-	void updateCloudRotation()
-	{
-		gfx_gl::f_shader_operator::GetUniform(*globeMaterial->GetShaderOperator(), "u_cloudAngle")->SetValueAs(cloudAngle);
-	}
-
-	//set the shader's twinkle
-	void setStarTwinkle()
-	{
-		gfx_gl::uniform_vso u_twinkleTime; u_twinkleTime->SetName("u_twinkleTime").SetValueAs(starTwinkleTime);
-
-		skyboxMaterial->GetShaderOperator()->AddUniform(*u_twinkleTime);
-	}
-
-	//update the clouds rotation
-	void updateStarTwinkle()
-	{
-		gfx_gl::f_shader_operator::GetUniform(*skyboxMaterial->GetShaderOperator(), "u_twinkleTime")->SetValueAs(starTwinkleTime);
-	}
-
-	//set the globe's texture uniforms
-	void setGlobeTextures()
-	{
-		//parameter to repeat wrap the cloud texture
-		gfx_gl::TextureObject::Params cloudParams;
-		cloudParams.Wrap_S<gfx_gl::p_texture_object::wrap_technique::Repeat>()
-			.Wrap_T<gfx_gl::p_texture_object::wrap_technique::Repeat>()
-			.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
-
-		//load the textures
-		auto earthTexture = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_diffuse.jpg")));
-		auto earthNight = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_night.jpg")));
-		auto earthClouds = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/clouds.jpg")), cloudParams);
-		auto earthSpecular = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_specular.jpg")));
-		auto earthNormal = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_normal_map.png")));
-
-		//set the uniforms
-		gfx_gl::uniform_vso diffuse;  diffuse->SetName("earth_diffuse").SetValueAs(*earthTexture);
-		gfx_gl::uniform_vso specular; specular->SetName("earth_specular").SetValueAs(*earthSpecular);
-		gfx_gl::uniform_vso night;    night->SetName("earth_night").SetValueAs(*earthNight);
-		gfx_gl::uniform_vso clouds;   clouds->SetName("earth_clouds").SetValueAs(*earthClouds);
-		gfx_gl::uniform_vso normals;  normals->SetName("earth_normals").SetValueAs(*earthNormal);
-
-		//add to shader
-		globeMaterial->GetShaderOperator()->AddUniform(*diffuse);
-		globeMaterial->GetShaderOperator()->AddUniform(*specular);
-		globeMaterial->GetShaderOperator()->AddUniform(*night);
-		globeMaterial->GetShaderOperator()->AddUniform(*clouds);
-		globeMaterial->GetShaderOperator()->AddUniform(*normals);
-	}
-
-	//set the skybox texture uniform
-	void setSkyboxTextures()
-	{
-		//load the texture
-		auto skyboxTexture = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/skybox.png")));
-
-		//set the uniform
-		gfx_gl::uniform_vso skybox; skybox->SetName("skybox_diffuse").SetValueAs(*skyboxTexture);
-
-		//add to shader
-		skyboxMaterial->GetShaderOperator()->AddUniform(*skybox);
-	}
-
-	//set the texture uniforms in the shaders
-	void setTextures()
-	{
-		setGlobeTextures();
-		setSkyboxTextures();
+		textureMaterial->GetShaderOperator()->AddUniform(*u_toRtt);
 	}
 
 	void Pre_Render(sec_type) override
 	{
-		skyBoxScene->Process();
-
-		SkyBoxRenderer->ApplyRenderSettings();
-		SkyBoxRenderer->Render();
-	}
-
-	//slowly rotate the earth
-	void DoUpdate(sec_type delta) override
-	{
-		//apply rotation to globe's transform
-		auto temp = globe->GetMesh()->GetComponent<math_cs::Transform>()->GetOrientation();
-		temp.MakeRotationY(earthAngle);
-		globe->GetMesh()->GetComponent<math_cs::Transform>()->SetOrientation(temp);
-
-		//increase earth's rotation
-		earthAngle += earthAngleDelta;
-
-		//increase cloud's rotation
-		cloudAngle += cloudAngleDelta;
-		updateCloudRotation();
-
-		//increase time for twinkle
-		starTwinkleTime += starTwinkleDelta;
-		updateStarTwinkle();
-
-		//call Application's DoUpdate for camera controls
-		Application::DoUpdate(delta);
+		m_rtt->GetRenderer()->ApplyRenderSettings();
+		m_rtt->GetRenderer()->Render();
 	}
 };
 

@@ -10,6 +10,7 @@ out		vec2 v_texCoord;		//texture coordinate of vertex
 
 void main()
 { 
+///get the position on screen and pass through the vertex texture coordinate
 	gl_Position = u_vp * u_model * vec4(a_vertPos, 1);
 	v_texCoord  = a_vertTexCoord0;
 }

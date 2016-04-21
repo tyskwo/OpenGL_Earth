@@ -11,7 +11,7 @@ out		vec4	  o_color;
 void main()
 {             
     const float gamma = 2.2f;
-	float exposure	  = 0.5f;
+	float exposure	  = 1.0f;
 
 //get the color from each texture
     vec4 hdrColor   = texture2D(texture_normal, v_texCoord).rgba;      

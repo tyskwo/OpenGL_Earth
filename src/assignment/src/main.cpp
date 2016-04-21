@@ -223,10 +223,10 @@ private:
 	//enable the matrix uniforms
 		void setMatrix()
 		{
-			mesh->GetComponent<gfx_cs::Material>()->SetEnableUniform<gfx_cs::p_material::uniforms::k_viewProjectionMatrix>();
+			//mesh->GetComponent<gfx_cs::Material>()->SetEnableUniform<gfx_cs::p_material::uniforms::k_viewProjectionMatrix>();
 			mesh->GetComponent<gfx_cs::Material>()->SetEnableUniform<gfx_cs::p_material::uniforms::k_viewMatrix>();
 
-			mesh->GetComponent<gfx_cs::Mesh>()->SetEnableUniform<gfx_cs::p_renderable::uniforms::k_modelMatrix>();
+			//mesh->GetComponent<gfx_cs::Mesh>()->SetEnableUniform<gfx_cs::p_renderable::uniforms::k_modelMatrix>();
 			mesh->GetComponent<gfx_cs::Mesh>()->SetEnableUniform<gfx_cs::p_renderable::uniforms::k_normalMatrix>();
 		}
 	};
@@ -260,8 +260,8 @@ private:
 		bloomMaterial   = createMaterial(bloomVS,   bloomFS);
 		combineMaterial = createMaterial(combineVS, combineFS);
 
-	//set the light position
-		setLightPosition(math_t::Vec3f32(0.0f, 0.0f, 1.0f));
+	//set the light direction and color
+		setLightProperties(math_t::Vec3f32(0.2f, 0.5f, 3.0f), math_t::Vec3f32(1.5f, 1.5f, 1.5f));
 
 	//set the ping pong system's quads to the right shaders
 		setQuadTextures();
@@ -343,12 +343,17 @@ private:
 		GetMouse()->Register(&*cameraControl);
 	}
 
-//set the shader's light positions
-	void setLightPosition(math_t::Vec3f32 position)
+//set the shader's light properties
+	void setLightProperties(math_t::Vec3f32 direction, math_t::Vec3f32 color)
 	{
-		gfx_gl::uniform_vso u_lightPosition; u_lightPosition->SetName("u_lightPosition").SetValueAs(position);
+		gfx_gl::uniform_vso u_lightDirection; u_lightDirection->SetName("u_lightDirection").SetValueAs(direction);
 
-		globeMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
+		globeMaterial->GetShaderOperator()->AddUniform(*u_lightDirection);
+
+
+		gfx_gl::uniform_vso u_lightColor; u_lightColor->SetName("u_lightColor").SetValueAs(color);
+
+		globeMaterial->GetShaderOperator()->AddUniform(*u_lightColor);
 	}
 
 //set textures in shaders
@@ -388,7 +393,7 @@ private:
 	void DoRender(sec_type timeDelta) override
 	{
 	//process the scene
-		scene->Process();
+		scene->Process(timeDelta);
 
 	//render the scene as is
 		pingPongSystem->setRenderer(0);
@@ -401,15 +406,15 @@ private:
 		scene->GetEntityManager()->DeactivateEntity(pingPongSystem->getQuad(0));	//no longer needed (don't render on the screen)
 
 	//second pass: apply bloom to the high pass
-		pingPongSystem->setRenderer(0);
+		pingPongSystem->setRenderer(GetRenderer());
 		pingPongSystem->RenderEntity(1, timeDelta);
 		pingPongSystem->render();
-		scene->GetEntityManager()->DeactivateEntity(pingPongSystem->getQuad(1));	//no longer needed (don't render on the screen)
+		//scene->GetEntityManager()->DeactivateEntity(pingPongSystem->getQuad(1));	//no longer needed (don't render on the screen)
 
 	//third pass: combine textures
-		pingPongSystem->setRenderer(GetRenderer());		//render to screen
-		pingPongSystem->RenderEntity(2, timeDelta);
-		pingPongSystem->render();
+		//pingPongSystem->setRenderer(GetRenderer());		//render to screen
+		//pingPongSystem->RenderEntity(2, timeDelta);
+		//pingPongSystem->render();
 	}
 };
 

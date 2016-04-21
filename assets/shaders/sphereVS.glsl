@@ -3,6 +3,8 @@
 
 	in      vec3 a_vertPos;			//vertex position
 	in      vec3 a_vertNorm;		//vertex normal
+	in		vec2 a_vertTexCoord0;	//vertex coordinate
+
 
 	uniform mat4 u_vp;				//the view projection matrix
 	uniform mat4 u_model;			//the model
@@ -10,6 +12,8 @@
 
 	out		vec3 v_vertNormal;		//the vertex's normal
 	out		vec3 v_lightDirection;	//the light direction
+	out		vec2 v_texCoord;		//the vertex position
+
 
 void main()
 { 
@@ -27,4 +31,7 @@ void main()
 	mat3 rotationMatrix = mat3(u_model);
 
 	v_vertNormal = rotationMatrix * a_vertNorm;
+
+//pass the vertex through to the fragment shader
+	v_texCoord = a_vertTexCoord0;
 }

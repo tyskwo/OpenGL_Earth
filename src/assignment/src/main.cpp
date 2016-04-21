@@ -147,7 +147,7 @@ private:
 
 	Object* sphere; //the sphere
 
-
+	core_cs::entity_vptr splitQuad;
 
 
 	gfx::rtt_sptr rtt;
@@ -163,8 +163,8 @@ private:
 
 		//create a default material and set the light position
 		defaultMaterial = createMaterial(shaderPathVS, shaderPathFS);
-		textureMaterial = createMaterial(bloomVS,    bloomFS);
-		//bloomMaterial   = createMaterial(bloomVS,      bloomFS);
+		textureMaterial = createMaterial(textureVS,    textureFS);
+		bloomMaterial   = createMaterial(bloomVS,      bloomFS);
 
 
 		//set the light position
@@ -181,13 +181,13 @@ private:
 			math_t::Rectf_c::height(GetWindow()->GetAspectRatio().Get() * 2.0f));
 
 
-		core_cs::entity_vptr splitQuad = scene->CreatePrefab<pref_gfx::Quad>()
+		splitQuad = scene->CreatePrefab<pref_gfx::Quad>()
 			.DispatchTo(quadSystem.get())
 			.Dimensions(rect).Create();
 
-		//core_cs::entity_vptr bloomQuad = scene->CreatePrefab<pref_gfx::Quad>()
-			//.DispatchTo(quadSystem.get())
-			//.Dimensions(rect).Create();
+		core_cs::entity_vptr bloomQuad = scene->CreatePrefab<pref_gfx::Quad>()
+			.DispatchTo(quadSystem.get())
+			.Dimensions(rect).Create();
 
 		//core_cs::entity_vptr finalQuad = scene->CreatePrefab<pref_gfx::Quad>()
 			//.DispatchTo(quadSystem.get())
@@ -195,7 +195,7 @@ private:
 
 
 		scene->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(splitQuad, textureMaterial));
-		//scene->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(bloomQuad, bloomMaterial));
+		scene->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(bloomQuad, bloomMaterial));
 		//scene->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(finalQuad, textureMaterial));
 
 
@@ -298,11 +298,12 @@ private:
 	{
 		gfx_gl::uniform_vso u_normal; u_normal->SetName("texture").SetValueAs(*rtt_brightColors);
 
-		textureMaterial->GetShaderOperator()->AddUniform(*u_normal);
+		bloomMaterial->GetShaderOperator()->AddUniform(*u_normal);
 	}
 
 	void Pre_Render(sec_type) override
 	{
+		//scene->GetEntityManager()->DeactivateEntity(splitQuad);
 		rtt->GetRenderer()->ApplyRenderSettings();
 		rtt->GetRenderer()->Render();
 	}

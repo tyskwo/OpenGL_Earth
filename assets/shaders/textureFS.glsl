@@ -2,9 +2,8 @@
 
 in  vec2 v_texCoord;
 
-out vec4 o_color;
-out vec4 o_colorBright;
-
+layout (location = 0) out vec4 o_color;
+layout (location = 1) out vec4 o_colorBright;
 
 uniform sampler2D texture;
 

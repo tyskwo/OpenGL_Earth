@@ -1,25 +1,29 @@
 #version 330 core
 
-in vec2 v_texCoord;
-
-out vec4 o_color;
+in		vec2	  v_texCoord;
 
 uniform sampler2D texture_normal;
 uniform sampler2D texture_bright;
-//uniform float	  exposure;
+
+out		vec4	  o_color;
+
 
 void main()
 {             
-    const float gamma = 2.2;
-	float exposure = 0.5f;
+    const float gamma = 2.2f;
+	float exposure	  = 0.5f;
 
+//get the color from each texture
     vec4 hdrColor   = texture2D(texture_normal, v_texCoord).rgba;      
     vec4 bloomColor = texture2D(texture_bright, v_texCoord).rgba;
-    hdrColor += bloomColor; // additive blending
 
-    // tone mapping
-    vec4 result = vec4(1.0) - exp(-hdrColor * exposure);
-		 result = pow(result, vec4(1.0 / gamma));
+//add the colors (additive blending)
+    hdrColor += bloomColor;
 
+//gamma correct
+    vec4 result = vec4(1.0f) - exp(-hdrColor * exposure);
+		 result = pow(result, vec4(1.0f / gamma));
+
+//pass to the renderer
     o_color = result;
 }  

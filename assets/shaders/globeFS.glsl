@@ -18,18 +18,19 @@
 			float	  shininess = 60;			//specular lighting values
 			float	  specularIntensity = 1.1;
 
-	out		vec3	   o_color;					//the color to pass to the renderer
+	layout (location = 0) out		vec4	   o_color;					//the color to pass to the renderer
+	layout (location = 1) out		vec4	   o_bright;				//the bright areas to pass to the renderer
 
 	
 
 void main()
 {
 //get the color for each texture at the given coordinate
-	vec3 color_diffuse  = texture2D(earth_diffuse,     vec2(v_texCoord.s,				 1 - v_texCoord.t)).rgb;
-	vec3 color_night    = texture2D(earth_night,       vec2(v_texCoord.s,				 1 - v_texCoord.t)).rgb;
-	vec3 color_clouds   = texture2D(earth_clouds,      vec2(v_texCoord.s + u_cloudAngle, 1 - v_texCoord.t)).rgb;
-	vec3 color_specular = texture2D(earth_specular,    vec2(v_texCoord.s,				 1 - v_texCoord.t)).rgb;
-	vec3 color_normals  = texture2D(earth_normals,     vec2(v_texCoord.s,				 1 - v_texCoord.t)).rgb;
+	vec4 color_diffuse  = texture2D(earth_diffuse,     vec2(v_texCoord.s,				 1 - v_texCoord.t));
+	vec4 color_night    = texture2D(earth_night,       vec2(v_texCoord.s,				 1 - v_texCoord.t));
+	vec4 color_clouds   = texture2D(earth_clouds,      vec2(v_texCoord.s + u_cloudAngle, 1 - v_texCoord.t));
+	vec4 color_specular = texture2D(earth_specular,    vec2(v_texCoord.s,				 1 - v_texCoord.t));
+	vec4 color_normals  = texture2D(earth_normals,     vec2(v_texCoord.s,				 1 - v_texCoord.t));
 		 color_normals  = (color_normals * 2.0) - 1.0;
 
 //normalize the interpolated normal
@@ -52,4 +53,8 @@ void main()
 	o_color.r = pow(o_color.r, 1.0 / 2.2);
 	o_color.g = pow(o_color.g, 1.0 / 2.2);
 	o_color.b = pow(o_color.b, 1.0 / 2.2);
+
+	float brightness = dot(o_color.rgb, vec3(0.2126, 0.7152, 0.0722));
+    if (brightness > 1.0) { o_bright = o_color; }
+    else { o_bright = vec4(0, 0, 0, 1); }
 }

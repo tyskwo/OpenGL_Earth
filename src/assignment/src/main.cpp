@@ -45,7 +45,10 @@ private:
 	typedef core::smart_ptr::VirtualPtr<core::component_system::Entity>						Entity;
 	typedef core::smart_ptr::VirtualPtr<input::component_system::ArcBallControlSystem>		ArcBallControlSystem;
 	typedef gfx_cs::material_sptr 															Material;
-
+	typedef core::smart_ptr::SharedPtr<graphics::gl::TextureObject>						    TexObj;
+	typedef core::smart_ptr::SharedPtr<graphics::renderer::Renderer>						Renderer;
+	typedef core::smart_ptr::VirtualPtr<graphics::Rtt>				                 		RTT;
+	 
 
 	//struct for a 3D object
 	struct Object
@@ -140,6 +143,20 @@ private:
 	Object*  skybox;			//the 'space' box
 
 
+
+	RTT rtt;
+	RTT rttHor;
+	RTT rttVert;
+	Scene	 rttHorScene;	//scene for RttHorBlur
+	Scene	 rttVertScene;	//scene for RttVertBlur
+	Scene	 rttScene;   	//scene for Rtt
+	TexObj   rttColTexObj;
+	TexObj   rttBrightTexObj;
+	TexObj   rttBrightHor;
+	Renderer rttRenderer;
+	Renderer rttBrightHorRend;
+	Renderer rttBrightVertRend;
+
 	//program specific variables
 	float			earthAngle = 0.0f;
 	float			earthAngleDelta = 0.001f;
@@ -159,6 +176,34 @@ private:
 	//after calling the constructor
 	error_type Post_Initialize() override
 	{
+		//--------------------------------------------------------------------------
+		rtt = core::smart_ptr::MakeShared<gfx::Rtt>(gfx::Rtt(core_ds::MakeTuple(800, 600)));
+		rttHor = core::smart_ptr::MakeShared<gfx::Rtt>(gfx::Rtt(core_ds::MakeTuple(800, 600)));
+		rttVert = core::smart_ptr::MakeShared<gfx::Rtt>(gfx::Rtt(core_ds::MakeTuple(800, 600)));
+
+		/*rttColTexObj = rtt->AddColorAttachment<0, gfx_t::color_u16_rgba>();
+		rttBrightTexObj = rtt->AddColorAttachment<1, gfx_t::color_u16_rgba>();
+		rtt->AddDepthAttachment();
+
+		rttRenderer = rtt->GetRenderer();
+		{
+			auto params = rttRenderer->GetParams();
+			params.SetClearColor(gfx_t::Color(0, 0, 0, 0));
+			rttRenderer->SetParams(params);
+		}
+
+		//gfx::Rtt rttHor(core_ds::MakeTuple(800, 600));
+		auto rttBrightHor = rttHor->AddColorAttachment<0, gfx_t::color_u16_rgba>();
+		auto rttBrightHorRend = rttHor->GetRenderer();
+
+		//gfx::Rtt rttVert(core_ds::MakeTuple(800, 600));
+		rttVert->AddColorAttachment<0>(rttBrightTexObj);
+		auto rttBrightVertRend = rttVert->GetRenderer();*/
+
+
+		//----------------------------------------------------------------------------
+
+
 		//load the scene
 		loadScene();
 
@@ -201,10 +246,6 @@ private:
 		scene->AddSystem<gfx_cs::ArcBallSystem>();							//add the arc ball system
 		cameraControl = scene->AddSystem<input_cs::ArcBallControlSystem>();	//add the control system
 
-
-
-
-
 		gfx_rend::Renderer::Params skyboxRenderParams(GetRenderer()->GetParams());
 		skyboxRenderParams.SetDepthWrite(false);
 		SkyBoxRenderer = core_sptr::MakeShared<gfx_rend::Renderer>(skyboxRenderParams);
@@ -221,6 +262,7 @@ private:
 
 		//set renderer
 		meshSystem->SetRenderer(GetRenderer());
+		//meshSystem->SetRenderer(rtt->GetRenderer());
 		skyBoxMeshRenderSystem->SetRenderer(SkyBoxRenderer);
 
 		//set the background color
@@ -233,6 +275,26 @@ private:
 		//create and set the camera
 		meshSystem->SetCamera(camera);
 		skyBoxMeshRenderSystem->SetCamera(camera);
+
+		//------------------------------------------------------------------------------------
+		/*rttHorScene->AddSystem<gfx_cs::MaterialSystem>("Render");
+		{
+			auto rttMeshSys = rttHorScene->AddSystem<gfx_cs::MeshRenderSystem>("Render");
+			rttMeshSys->SetRenderer(rttBrightHorRend);
+		}
+
+		rttVertScene->AddSystem<gfx_cs::MaterialSystem>("Render");
+		{
+			auto rttMeshSys = rttVertScene->AddSystem<gfx_cs::MeshRenderSystem>("Render");
+			rttMeshSys->SetRenderer(rttBrightVertRend);
+		}
+
+		rttScene->AddSystem<gfx_cs::MaterialSystem>("Render");
+		{
+			auto rttMeshSys = rttScene->AddSystem<gfx_cs::MeshRenderSystem>("Render");
+			rttMeshSys->SetRenderer(GetRenderer());
+		}*/
+		//--------------------------------------------------------------------------------------
 
 		//set up the mouse and keyboard
 		registerInputDevices();

@@ -153,6 +153,7 @@ private:
 
 	//program specific variables
 	float			earthAngle = 0.0f;
+	float			m_accumAngle = 0.0f;
 	float			earthAngleDelta = 0.001f;
 	float			cloudAngle = 0.0f;
 	float			cloudAngleDelta = -0.0001f;	//weather generally travels west->east.
@@ -161,7 +162,7 @@ private:
 
 	math_t::Vec3f32 lightPosition = math_t::Vec3f32(-1, 0, 3); //-x so that the mountains cast correct shadows.
 	math_t::Vec3f32 cameraPosition = math_t::Vec3f32(0, 0, 2);
-
+	math_t::Vec3f32 moonPos = math_t::Vec3f32(1.6f, 0.0f, 0.0f);
 
 	SkyBoxMeshRenderSystem	skyBoxMeshRenderSystem; //SkyBoxRenderSystem
 	gfx_rend::renderer_sptr SkyBoxRenderer;
@@ -188,7 +189,7 @@ private:
 		auto moonTransform = moon->GetMesh()->GetComponent<math_cs::Transform>();
 
 		moonTransform->SetScale(moonTransform->GetScale() / 6.0f);
-		moonTransform->SetPosition(math_t::Vec3f32(1.6f, 0.0f, 0.0f));
+		moonTransform->SetPosition(moonPos);
 
 
 		skybox = new Object(skyBoxScene, "/models/skybox.obj", skyboxMaterial);
@@ -400,6 +401,16 @@ private:
 	//slowly rotate the earth
 	void DoUpdate(sec_type delta) override
 	{
+		m_accumAngle += delta * 50;
+
+		auto xPos = math::Sin(math_t::Radian(math_t::Degree(core_utils::CastNumber<f32>(m_accumAngle)))) * 1.5f;
+		auto zPos = math::Cos(math_t::Radian(math_t::Degree(core_utils::CastNumber<f32>(m_accumAngle)))) * 1.5f;
+
+		moonPos[0] = xPos;
+		moonPos[2] = zPos;
+
+
+
 		//apply rotation to globe's transform
 		auto temp = globe->GetMesh()->GetComponent<math_cs::Transform>()->GetOrientation();
 		temp.MakeRotationY(earthAngle);
@@ -409,6 +420,7 @@ private:
 		auto tempMoon = moon->GetMesh()->GetComponent<math_cs::Transform>()->GetOrientation();
 		tempMoon.MakeRotationY(earthAngle);
 		moon->GetMesh()->GetComponent<math_cs::Transform>()->SetOrientation(tempMoon);
+		moon->GetMesh()->GetComponent<math_cs::Transform>()->SetPosition(moonPos);
 
 		//increase earth's rotation
 		earthAngle += earthAngleDelta;

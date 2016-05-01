@@ -374,9 +374,9 @@ private:
 		setSkyboxTextures();
 	}
 
-	void Pre_Render(sec_type) override
+	void Pre_Render(sec_type delta) override
 	{
-		skyBoxScene->Process();
+		skyBoxScene->Process(delta);
 
 		SkyBoxRenderer->ApplyRenderSettings();
 		SkyBoxRenderer->Render();

@@ -22,6 +22,11 @@
 
 	
 
+float random(vec2 value)
+{
+	return fract(sin(dot(value.xy, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
 void main()
 {
 //get the color for each texture at the given coordinate
@@ -35,12 +40,16 @@ void main()
 //normalize the interpolated normal
 	vertNorm_interpolated = normalize(v_vertNormal);
 
+	color_normals.rgb = color_normals.rgb + color_specular.rgb * color_normals.rgb * noise3(v_vertNormal);
+
 //get the diffuse and specular multipliers
 	float diffuseMultiplier  = dot(vertNorm_interpolated * color_normals.rgb, v_lightDirection);
 	float specularMultiplier = dot(vertNorm_interpolated,				  v_lightDirection);
 
+	//color_diffuse = color_diffuse + color_specular * random(v_texCoord);
+
 //get the interpolated color based on the diffuse texture, night texture, and clouds texture
-	color = (color_diffuse * diffuseMultiplier + color_night * (1.0f - diffuseMultiplier) + color_clouds * (diffuseMultiplier));
+	color = (color_diffuse * diffuseMultiplier + color_night * (1.0f - diffuseMultiplier));/* + color_clouds * (diffuseMultiplier));*/
 
 //get the specular value based on the specular intensity and specular mask.
 	vec4 specular = specularIntensity * color_specular * max(pow(max(specularMultiplier, 0), shininess), 0) * length(color);

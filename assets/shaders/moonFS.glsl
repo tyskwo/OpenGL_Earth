@@ -9,6 +9,8 @@
 
 			vec4	  color;					//the color of the sphere
 			vec3	  vertNorm_interpolated;	//the interpolated normal from each vertex
+			float	  shininess = 40;			//specular lighting values
+			float	  specularIntensity = 1.15;
 
 	out		vec4	   o_color;					//the color to pass to the renderer
 
@@ -26,10 +28,16 @@ void main()
 
 //get the diffuse and specular multipliers
 	float diffuseMultiplier  = dot(vertNorm_interpolated * color_normals.rgb, v_lightDirection);
-	//float specularMultiplier = dot(vertNorm_interpolated,				      v_lightDirection);
+	float specularMultiplier = dot(vertNorm_interpolated,				      v_lightDirection);
 
 //get the interpolated color based on the diffuse texture
-	o_color = color_diffuse * diffuseMultiplier;
+	color = color_diffuse * diffuseMultiplier;
+
+//get the specular value based on the specular intensity and specular mask.
+	vec4 specular = specularIntensity * color_diffuse * max(pow(max(specularMultiplier, 0), shininess), 0) * length(color);
+	
+//pass the calculated color to the renderer; combine the specular with the interpolated color
+	o_color = color + specular;
 
 //gamma correction
 	o_color.r = pow(o_color.r, 1.0 / 2.2);

@@ -358,7 +358,8 @@ private:
 		auto earthNight = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_night.jpg")));
 		auto earthClouds = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/clouds.jpg")), cloudParams);
 		auto earthSpecular = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_specular.jpg")));
-		auto earthNormal = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_normal_map.jpg")));
+		auto earthNormal = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/earth_normal_map.png")));
+		auto waterNormal = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/waterNormals.jpg")), cloudParams);
 
 		//set the uniforms
 		gfx_gl::uniform_vso diffuse;  diffuse->SetName("earth_diffuse").SetValueAs(*earthTexture);
@@ -366,6 +367,7 @@ private:
 		gfx_gl::uniform_vso night;    night->SetName("earth_night").SetValueAs(*earthNight);
 		gfx_gl::uniform_vso clouds;   clouds->SetName("earth_clouds").SetValueAs(*earthClouds);
 		gfx_gl::uniform_vso normals;  normals->SetName("earth_normals").SetValueAs(*earthNormal);
+		gfx_gl::uniform_vso waterNormals;  waterNormals->SetName("water_normals").SetValueAs(*waterNormal);
 
 		//add to shader
 		globeMaterial->GetShaderOperator()->AddUniform(*diffuse);
@@ -373,6 +375,7 @@ private:
 		globeMaterial->GetShaderOperator()->AddUniform(*night);
 		globeMaterial->GetShaderOperator()->AddUniform(*clouds);
 		globeMaterial->GetShaderOperator()->AddUniform(*normals);
+		globeMaterial->GetShaderOperator()->AddUniform(*waterNormals);
 	}
 
 	//set the globe's texture uniforms

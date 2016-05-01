@@ -9,6 +9,7 @@
 	uniform sampler2D earth_night;				//texture that holds the earth map at night
 	uniform sampler2D earth_clouds;				//texture that holds the earth's clouds
 	uniform sampler2D earth_normals;			//texture for earth normals
+	uniform sampler2D water_normals;			//texture for earth normals
 
 	uniform float	  u_cloudAngle;				//amount to shift clouds by
 
@@ -24,32 +25,36 @@
 
 float random(vec2 value)
 {
-	return fract(sin(dot(value.xy, vec2(12.9898, 78.233))) * 43758.5453);
+	return fract(sin(dot(value.xy, vec2(2.898, 8.233))) * 358.5453) * 10;
 }
 
 void main()
 {
 //get the color for each texture at the given coordinate
-	vec4 color_diffuse  = texture2D(earth_diffuse,     vec2(v_texCoord.s,				 1 -v_texCoord.t));
-	vec4 color_night    = texture2D(earth_night,       vec2(v_texCoord.s,				 1 - v_texCoord.t));
-	vec4 color_clouds   = texture2D(earth_clouds,      vec2(v_texCoord.s + u_cloudAngle, 1 - v_texCoord.t));
-	vec4 color_specular = texture2D(earth_specular,    vec2(v_texCoord.s,				 1 - v_texCoord.t));
-	vec4 color_normals  = texture2D(earth_normals,     vec2(v_texCoord.s,				 1 - v_texCoord.t));
+	vec4 color_diffuse			= texture2D(earth_diffuse,		vec2(v_texCoord.s,				 1 -v_texCoord.t));
+	vec4 color_night			= texture2D(earth_night,		vec2(v_texCoord.s,				 1 - v_texCoord.t));
+	vec4 color_clouds			= texture2D(earth_clouds,		vec2(v_texCoord.s + u_cloudAngle, 1 - v_texCoord.t));
+	vec4 color_specular			= texture2D(earth_specular,		vec2(v_texCoord.s,				 1 - v_texCoord.t));
+	vec4 color_normals			= texture2D(earth_normals,		vec2(v_texCoord.s,				 1 - v_texCoord.t));
+	vec4 water_color_normals	= texture2D(water_normals,		vec2(v_texCoord.s,				 1 - v_texCoord.t));
 		 color_normals  = (color_normals * 2.0) - 1.0;
+		 water_color_normals  = (water_color_normals * 2.0) - 1.0;
 
 //normalize the interpolated normal
 	vertNorm_interpolated = normalize(v_vertNormal);
 
-	color_normals.rgb = color_normals.rgb + color_specular.rgb * color_normals.rgb * noise3(v_vertNormal);
-
 //get the diffuse and specular multipliers
 	float diffuseMultiplier  = dot(vertNorm_interpolated * color_normals.rgb, v_lightDirection);
+	float waterDiffuseMultiplier  = dot(vertNorm_interpolated * water_color_normals.rgb, v_lightDirection);
 	float specularMultiplier = dot(vertNorm_interpolated,				  v_lightDirection);
 
-	//color_diffuse = color_diffuse + color_specular * random(v_texCoord);
+	vec4 land = color_diffuse * diffuseMultiplier * abs(color_specular - 1.0);
+	vec4 sea = color_diffuse * color_specular * waterDiffuseMultiplier;
+	vec4 night = color_night * (1.0f - diffuseMultiplier);
+	vec4 clouds = color_clouds * (diffuseMultiplier);
 
 //get the interpolated color based on the diffuse texture, night texture, and clouds texture
-	color = (color_diffuse * diffuseMultiplier + color_night * (1.0f - diffuseMultiplier));/* + color_clouds * (diffuseMultiplier));*/
+	color = land + sea + night + clouds;
 
 //get the specular value based on the specular intensity and specular mask.
 	vec4 specular = specularIntensity * color_specular * max(pow(max(specularMultiplier, 0), shininess), 0) * length(color);

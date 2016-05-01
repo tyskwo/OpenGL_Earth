@@ -201,11 +201,11 @@ private:
 			rttRenderer->SetParams(params);
 		}
 
-		auto rttBrightHor = rttHor->AddColorAttachment<0, gfx_t::color_u16_rgba>();
-		auto rttBrightHorRend = rttHor->GetRenderer();
+		rttBrightHor = rttHor->AddColorAttachment<0, gfx_t::color_u16_rgba>();
+		rttBrightHorRend = rttHor->GetRenderer();
 
 		rttVert->AddColorAttachment<0>(rttBrightTexObj);
-		auto rttBrightVertRend = rttVert->GetRenderer();
+		rttBrightVertRend = rttVert->GetRenderer();
 
 
 		//----------------------------------------------------------------------------

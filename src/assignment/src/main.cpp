@@ -147,6 +147,7 @@ private:
 	Material skyboxMaterial;	//the skybox material
 
 	Object*  globe;				//the globe
+	Object*  moon;				//the globe
 	Object*  skybox;			//the 'space' box
 
 
@@ -181,6 +182,15 @@ private:
 
 		//initialize the objects
 		globe = new Object(scene, "/models/globe.obj", globeMaterial);
+		moon = new Object(scene, "/models/globe.obj", globeMaterial);
+		
+
+		auto moonTransform = moon->GetMesh()->GetComponent<math_cs::Transform>();
+
+		moonTransform->SetScale(moonTransform->GetScale() / 6.0f);
+		moonTransform->SetPosition(math_t::Vec3f32(1.6f, 0.0f, 0.0f));
+
+
 		skybox = new Object(skyBoxScene, "/models/skybox.obj", skyboxMaterial);
 
 		
@@ -394,6 +404,11 @@ private:
 		auto temp = globe->GetMesh()->GetComponent<math_cs::Transform>()->GetOrientation();
 		temp.MakeRotationY(earthAngle);
 		globe->GetMesh()->GetComponent<math_cs::Transform>()->SetOrientation(temp);
+
+		//apply rotation to moon's transform
+		auto tempMoon = moon->GetMesh()->GetComponent<math_cs::Transform>()->GetOrientation();
+		tempMoon.MakeRotationY(earthAngle);
+		moon->GetMesh()->GetComponent<math_cs::Transform>()->SetOrientation(tempMoon);
 
 		//increase earth's rotation
 		earthAngle += earthAngleDelta;

@@ -18,6 +18,10 @@ namespace
 	core_str::String globeShaderPathVS("/shaders/globeVS.glsl");
 	core_str::String globeShaderPathFS("/shaders/globeFS.glsl");
 
+	//moon vertex and fragment shader paths
+	core_str::String moonShaderPathVS("/shaders/moonVS.glsl");
+	core_str::String moonShaderPathFS("/shaders/moonFS.glsl");
+
 	//skybox vertex and fragment shader paths
 	core_str::String skyboxShaderPathVS("/shaders/skyboxVS.glsl");
 	core_str::String skyboxShaderPathFS("/shaders/skyboxFS.glsl");
@@ -144,6 +148,7 @@ private:
 	ArcBallControlSystem	cameraControl;	//the camera controls
 
 	Material globeMaterial;		//the globe material
+	Material moonMaterial;		//the moons material
 	Material skyboxMaterial;	//the skybox material
 
 	Object*  globe;				//the globe
@@ -176,6 +181,7 @@ private:
 
 		//create a default material and set the light position
 		globeMaterial = createMaterial(scene, globeShaderPathVS, globeShaderPathFS);
+		moonMaterial = createMaterial(scene, moonShaderPathVS, moonShaderPathFS);
 		skyboxMaterial = createMaterial(skyBoxScene, skyboxShaderPathVS, skyboxShaderPathFS);
 
 		//add uniforms to the shaders
@@ -183,14 +189,12 @@ private:
 
 		//initialize the objects
 		globe = new Object(scene, "/models/globe.obj", globeMaterial);
-		moon = new Object(scene, "/models/globe.obj", globeMaterial);
+		moon = new Object(scene, "/models/globe.obj", moonMaterial);
 		
 
 		auto moonTransform = moon->GetMesh()->GetComponent<math_cs::Transform>();
-
 		moonTransform->SetScale(moonTransform->GetScale() / 6.0f);
 		moonTransform->SetPosition(moonPos);
-
 
 		skybox = new Object(skyBoxScene, "/models/skybox.obj", skyboxMaterial);
 
@@ -309,6 +313,7 @@ private:
 		gfx_gl::uniform_vso u_lightPosition; u_lightPosition->SetName("u_lightPosition").SetValueAs(lightPosition);
 
 		globeMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
+		moonMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
 	}
 
 	//set the shader's cloud rotation
@@ -370,6 +375,22 @@ private:
 		globeMaterial->GetShaderOperator()->AddUniform(*normals);
 	}
 
+	//set the globe's texture uniforms
+	void setMoonTextures()
+	{
+		//load the textures
+		auto moonTexture = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/moon_diffuse.png")));
+		auto moonNormal = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/moon_normals.jpg")));
+
+		//set the uniforms
+		gfx_gl::uniform_vso diffuse;  diffuse->SetName("moon_diffuse").SetValueAs(*moonTexture);
+		gfx_gl::uniform_vso normals;  normals->SetName("moon_normals").SetValueAs(*moonNormal);
+
+		//add to shader
+		moonMaterial->GetShaderOperator()->AddUniform(*diffuse);
+		moonMaterial->GetShaderOperator()->AddUniform(*normals);
+	}
+
 	//set the skybox texture uniform
 	void setSkyboxTextures()
 	{
@@ -386,6 +407,7 @@ private:
 	//set the texture uniforms in the shaders
 	void setTextures()
 	{
+		setMoonTextures();
 		setGlobeTextures();
 		setSkyboxTextures();
 	}

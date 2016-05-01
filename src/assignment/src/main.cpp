@@ -181,7 +181,7 @@ private:
 
 		//create a default material and set the light position
 		globeMaterial = createMaterial(scene, globeShaderPathVS, globeShaderPathFS);
-		moonMaterial = createMaterial(scene, moonShaderPathVS, moonShaderPathFS);
+		moonMaterial = createMaterial(scene, globeShaderPathVS, moonShaderPathFS);
 		skyboxMaterial = createMaterial(skyBoxScene, skyboxShaderPathVS, skyboxShaderPathFS);
 
 		//add uniforms to the shaders
@@ -423,7 +423,7 @@ private:
 	//slowly rotate the earth
 	void DoUpdate(sec_type delta) override
 	{
-		m_accumAngle += delta * 50;
+		m_accumAngle += float(delta) * 50.0f;
 
 		auto xPos = math::Sin(math_t::Radian(math_t::Degree(core_utils::CastNumber<f32>(m_accumAngle)))) * 1.5f;
 		auto zPos = math::Cos(math_t::Radian(math_t::Degree(core_utils::CastNumber<f32>(m_accumAngle)))) * 1.5f;

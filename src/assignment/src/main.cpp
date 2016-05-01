@@ -21,6 +21,12 @@ namespace
 	//skybox vertex and fragment shader paths
 	core_str::String skyboxShaderPathVS("/shaders/skyboxVS.glsl");
 	core_str::String skyboxShaderPathFS("/shaders/skyboxFS.glsl");
+
+	core_str::String shaderPathGaussianBlurVS("/shaders/tlocGaussianBlurVS.glsl");
+	core_str::String shaderPathGaussianBlurFS("/shaders/tlocGaussianBlurFS.glsl");
+
+	core_str::String shaderPathBloomVS("/shaders/tlocBloomVS.glsl");
+	core_str::String shaderPathBloomFS("/shaders/tlocBloomFS.glsl");
 };
 
 
@@ -47,7 +53,6 @@ private:
 	typedef gfx_cs::material_sptr 															Material;
 	typedef core::smart_ptr::SharedPtr<graphics::gl::TextureObject>						    TexObj;
 	typedef core::smart_ptr::SharedPtr<graphics::renderer::Renderer>						Renderer;
-	typedef core::smart_ptr::VirtualPtr<graphics::Rtt>				                 		RTT;
 	 
 
 	//struct for a 3D object
@@ -144,9 +149,10 @@ private:
 
 
 
-	RTT rtt;
-	RTT rttHor;
-	RTT rttVert;
+	gfx::rtt_sptr rtt;
+	gfx::rtt_sptr rttHor;
+	gfx::rtt_sptr rttVert;
+	Scene	 mainScene;   	//main scene to add to
 	Scene	 rttHorScene;	//scene for RttHorBlur
 	Scene	 rttVertScene;	//scene for RttVertBlur
 	Scene	 rttScene;   	//scene for Rtt
@@ -156,6 +162,9 @@ private:
 	Renderer rttRenderer;
 	Renderer rttBrightHorRend;
 	Renderer rttBrightVertRend;
+	Entity   qHor;
+	Entity   qVert;
+	Entity   q;
 
 	//program specific variables
 	float			earthAngle = 0.0f;
@@ -177,11 +186,11 @@ private:
 	error_type Post_Initialize() override
 	{
 		//--------------------------------------------------------------------------
-		rtt = core::smart_ptr::MakeShared<gfx::Rtt>(gfx::Rtt(core_ds::MakeTuple(800, 600)));
-		rttHor = core::smart_ptr::MakeShared<gfx::Rtt>(gfx::Rtt(core_ds::MakeTuple(800, 600)));
-		rttVert = core::smart_ptr::MakeShared<gfx::Rtt>(gfx::Rtt(core_ds::MakeTuple(800, 600)));
+		rtt = core::smart_ptr::MakeShared<gfx::Rtt>(core_ds::MakeTuple(800, 600));
+		rttHor = core::smart_ptr::MakeShared<gfx::Rtt>(core_ds::MakeTuple(800, 600));
+		rttVert = core::smart_ptr::MakeShared<gfx::Rtt>(core_ds::MakeTuple(800, 600));
 
-		/*rttColTexObj = rtt->AddColorAttachment<0, gfx_t::color_u16_rgba>();
+		rttColTexObj = rtt->AddColorAttachment<0, gfx_t::color_u16_rgba>();
 		rttBrightTexObj = rtt->AddColorAttachment<1, gfx_t::color_u16_rgba>();
 		rtt->AddDepthAttachment();
 
@@ -192,13 +201,11 @@ private:
 			rttRenderer->SetParams(params);
 		}
 
-		//gfx::Rtt rttHor(core_ds::MakeTuple(800, 600));
 		auto rttBrightHor = rttHor->AddColorAttachment<0, gfx_t::color_u16_rgba>();
 		auto rttBrightHorRend = rttHor->GetRenderer();
 
-		//gfx::Rtt rttVert(core_ds::MakeTuple(800, 600));
 		rttVert->AddColorAttachment<0>(rttBrightTexObj);
-		auto rttBrightVertRend = rttVert->GetRenderer();*/
+		auto rttBrightVertRend = rttVert->GetRenderer();
 
 
 		//----------------------------------------------------------------------------
@@ -208,14 +215,16 @@ private:
 		loadScene();
 
 		//create a default material and set the light position
-		globeMaterial = createMaterial(scene, globeShaderPathVS, globeShaderPathFS);
+		//globeMaterial = createMaterial(scene, globeShaderPathVS, globeShaderPathFS);
+		globeMaterial = createMaterial(mainScene, globeShaderPathVS, globeShaderPathFS);
 		skyboxMaterial = createMaterial(skyBoxScene, skyboxShaderPathVS, skyboxShaderPathFS);
 
 		//add uniforms to the shaders
 		addUniforms();
 
 		//initialize the objects
-		globe = new Object(scene, "/models/globe.obj", globeMaterial);
+		globe = new Object(mainScene, "/models/globe.obj", globeMaterial);
+		//globe = new Object(scene, "/models/globe.obj", globeMaterial);
 		skybox = new Object(skyBoxScene, "/models/skybox.obj", skyboxMaterial);
 
 		
@@ -233,18 +242,99 @@ private:
 
 		skyBoxScene->Initialize();
 
+		//----------------------------------------------------------------------
+		using math_t::Rectf32_c;
+		Rectf32_c rect(Rectf32_c::width(2.0f), Rectf32_c::height(2.0f));
+
+		// -----------------------------------------------------------------------
+		// Quad for rendering the bright pass as HORIZONTAL blur
+
+		qHor = rttHorScene->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).Create();
+		{
+			gfx_gl::uniform_vso u_rttBrightTo;
+			u_rttBrightTo->SetName("s_texture").SetValueAs(*rttBrightTexObj);
+
+			gfx_gl::uniform_vso u_horizontal;
+			u_horizontal->SetName("u_horizontal").SetValueAs(1);
+
+			rttHorScene->CreatePrefab<pref_gfx::Material>()
+				.AddUniform(u_rttBrightTo.get())
+				.AddUniform(u_horizontal.get())
+				.Add(qHor, core_io::Path(GetAssetsPath() + shaderPathGaussianBlurVS),
+				core_io::Path(GetAssetsPath() + shaderPathGaussianBlurFS));
+		}
+
+		// -----------------------------------------------------------------------
+		// Quad for rendering the bright pass as VERTICAL blur
+
+		qVert = rttVertScene->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).Create();
+		{
+			gfx_gl::uniform_vso u_rttBrightTo;
+			u_rttBrightTo->SetName("s_texture").SetValueAs(*rttBrightHor);
+
+			gfx_gl::uniform_vso u_horizontal;
+			u_horizontal->SetName("u_horizontal").SetValueAs(0);
+
+			rttVertScene->CreatePrefab<pref_gfx::Material>()
+				.AddUniform(u_rttBrightTo.get())
+				.AddUniform(u_horizontal.get())
+				.Add(qVert, core_io::Path(GetAssetsPath() + shaderPathGaussianBlurVS),
+				core_io::Path(GetAssetsPath() + shaderPathGaussianBlurFS));
+		}
+
+		// -----------------------------------------------------------------------
+		// Quad for rendering the texture
+
+		q = rttScene->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).Create();
+		{
+			gfx_gl::uniform_vso u_rttColTo;
+			u_rttColTo->SetName("s_texture").SetValueAs(*rttColTexObj);
+
+			gfx_gl::uniform_vso u_rttBrightTo;
+			u_rttBrightTo->SetName("s_bright").SetValueAs(*rttBrightTexObj);
+
+			gfx_gl::uniform_vso u_exposure;
+			u_exposure->SetName("u_exposure").SetValueAs(3.5f);
+
+			rttScene->CreatePrefab<pref_gfx::Material>()
+				.AddUniform(u_rttColTo.get())
+				.AddUniform(u_rttBrightTo.get())
+				.AddUniform(u_exposure.get())
+				.Add(q, core_io::Path(GetAssetsPath() + shaderPathBloomVS),
+				core_io::Path(GetAssetsPath() + shaderPathBloomFS));
+		}
+
+		mainScene->Initialize();
+		rttHorScene->Initialize();
+		rttVertScene->Initialize();
+		rttScene->Initialize();
+
 		return Application::Post_Initialize();
 	}
 
 	//load the scene
 	void loadScene()
 	{
+		//------------------------------------------------------------------------
+		mainScene = core_sptr::MakeShared<core_cs::ECS>();
+
+		auto meshSys = mainScene->AddSystem<gfx_cs::MeshRenderSystem>("Render");
+		meshSys->SetRenderer(rtt->GetRenderer());
+		//-----------------------------------------------------------------------
+
+
+
 		scene = GetScene();
-		scene->AddSystem<gfx_cs::MaterialSystem>();							//add material system
+		mainScene->AddSystem<gfx_cs::MaterialSystem>();							//add material system
+		mainScene->AddSystem<gfx_cs::CameraSystem>();							//add camera
+		meshSystem = mainScene->AddSystem<gfx_cs::MeshRenderSystem>();			//add mesh render system	
+		mainScene->AddSystem<gfx_cs::ArcBallSystem>();							//add the arc ball system
+		cameraControl = mainScene->AddSystem<input_cs::ArcBallControlSystem>();	//add the control system
+		/*scene->AddSystem<gfx_cs::MaterialSystem>();							//add material system
 		scene->AddSystem<gfx_cs::CameraSystem>();							//add camera
 		meshSystem = scene->AddSystem<gfx_cs::MeshRenderSystem>();			//add mesh render system	
 		scene->AddSystem<gfx_cs::ArcBallSystem>();							//add the arc ball system
-		cameraControl = scene->AddSystem<input_cs::ArcBallControlSystem>();	//add the control system
+		cameraControl = scene->AddSystem<input_cs::ArcBallControlSystem>();	//add the control system*/
 
 		gfx_rend::Renderer::Params skyboxRenderParams(GetRenderer()->GetParams());
 		skyboxRenderParams.SetDepthWrite(false);
@@ -261,8 +351,8 @@ private:
 
 
 		//set renderer
-		meshSystem->SetRenderer(GetRenderer());
-		//meshSystem->SetRenderer(rtt->GetRenderer());
+		//meshSystem->SetRenderer(GetRenderer());
+		meshSystem->SetRenderer(rtt->GetRenderer());
 		skyBoxMeshRenderSystem->SetRenderer(SkyBoxRenderer);
 
 		//set the background color
@@ -277,7 +367,11 @@ private:
 		skyBoxMeshRenderSystem->SetCamera(camera);
 
 		//------------------------------------------------------------------------------------
-		/*rttHorScene->AddSystem<gfx_cs::MaterialSystem>("Render");
+		rttHorScene = core_sptr::MakeShared<core_cs::ECS>();
+		rttVertScene = core_sptr::MakeShared<core_cs::ECS>();
+		rttScene = core_sptr::MakeShared<core_cs::ECS>();
+
+		rttHorScene->AddSystem<gfx_cs::MaterialSystem>("Render");
 		{
 			auto rttMeshSys = rttHorScene->AddSystem<gfx_cs::MeshRenderSystem>("Render");
 			rttMeshSys->SetRenderer(rttBrightHorRend);
@@ -293,7 +387,7 @@ private:
 		{
 			auto rttMeshSys = rttScene->AddSystem<gfx_cs::MeshRenderSystem>("Render");
 			rttMeshSys->SetRenderer(GetRenderer());
-		}*/
+		}
 		//--------------------------------------------------------------------------------------
 
 		//set up the mouse and keyboard
@@ -304,7 +398,7 @@ private:
 	//create a camera
 	entity_ptr createCamera(bool isPerspectiveView, float nearPlane, float farPlane, float verticalFOV_degrees, math_t::Vec3f32 position)
 	{
-		entity_ptr cameraEntity = scene->CreatePrefab<pref_gfx::Camera>()
+		entity_ptr cameraEntity = mainScene->CreatePrefab<pref_gfx::Camera>()
 			.Perspective(isPerspectiveView)
 			.Near(nearPlane)
 			.Far(farPlane)
@@ -312,10 +406,24 @@ private:
 			.Create(GetWindow()->GetDimensions());
 
 		//add the camera to the arcball system
-		scene->CreatePrefab<pref_gfx::ArcBall>().Add(cameraEntity);
-		scene->CreatePrefab<pref_input::ArcBallControl>()
+		mainScene->CreatePrefab<pref_gfx::ArcBall>().Add(cameraEntity);
+		mainScene->CreatePrefab<pref_input::ArcBallControl>()
 			.GlobalMultiplier(math_t::Vec2f(0.01f, 0.01f))
 			.Add(cameraEntity);
+
+
+		/*
+		entity_ptr cameraEntity = scene->CreatePrefab<pref_gfx::Camera>()
+			.Perspective(isPerspectiveView)
+			.Near(nearPlane)
+			.Far(farPlane)
+			.VerticalFOV(math_t::Degree(verticalFOV_degrees))
+			.Create(GetWindow()->GetDimensions());
+			
+			scene->CreatePrefab<pref_gfx::ArcBall>().Add(cameraEntity);
+		scene->CreatePrefab<pref_input::ArcBallControl>()
+			.GlobalMultiplier(math_t::Vec2f(0.01f, 0.01f))
+			.Add(cameraEntity);*/
 
 		//change camera's position
 		cameraEntity->GetComponent<math_cs::Transform>()->SetPosition(position);
@@ -442,6 +550,31 @@ private:
 
 		SkyBoxRenderer->ApplyRenderSettings();
 		SkyBoxRenderer->Render();
+		mainScene->Process("Update", 1.0 / 100.0);
+
+		mainScene->Update(delta);
+		mainScene->Process("Render", delta);
+
+		rttRenderer->ApplyRenderSettings();
+		rttRenderer->Render();
+
+		for (int i = 0; i < 8; ++i)
+		{
+			rttHorScene->Update(delta);
+			rttHorScene->Process(delta);
+
+			rttBrightHorRend->ApplyRenderSettings();
+			rttBrightHorRend->Render();
+
+			rttVertScene->Update(delta);
+			rttVertScene->Process(delta);
+
+			rttBrightVertRend->ApplyRenderSettings();
+			rttBrightVertRend->Render();
+		}
+
+		rttScene->Update(delta);
+		rttScene->Process(delta);
 	}
 
 	//slowly rotate the earth

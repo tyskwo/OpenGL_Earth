@@ -36,9 +36,21 @@ void main()
 	vec4 color_clouds			= texture2D(earth_clouds,		vec2(v_texCoord.s + u_cloudAngle, 1 - v_texCoord.t));
 	vec4 color_specular			= texture2D(earth_specular,		vec2(v_texCoord.s,				 1 - v_texCoord.t));
 	vec4 color_normals			= texture2D(earth_normals,		vec2(v_texCoord.s,				 1 - v_texCoord.t));
-	vec4 water_color_normals	= texture2D(water_normals,		vec2(v_texCoord.s,				 1 - v_texCoord.t));
+	vec4 water_color_normals1	= texture2D(water_normals,		vec2(v_texCoord.s + 2 * u_cloudAngle,				 1 - v_texCoord.t));
+	vec4 water_color_normals2	= texture2D(water_normals,		vec2(v_texCoord.s - 2 * u_cloudAngle,				 1 - v_texCoord.t));
+	vec4 water_color_normals3	= texture2D(water_normals,		vec2(v_texCoord.s,				 1 - v_texCoord.t - 2*u_cloudAngle));
+	vec4 water_color_normals4	= texture2D(water_normals,		vec2(v_texCoord.s,				 1 - v_texCoord.t + 2*u_cloudAngle));
+	vec4 water_color_normals5	= texture2D(water_normals,		vec2(v_texCoord.s - 2*u_cloudAngle,				 1 - v_texCoord.t - 2*u_cloudAngle));
+	vec4 water_color_normals6	= texture2D(water_normals,		vec2(v_texCoord.s + 2*u_cloudAngle,				 1 - v_texCoord.t + 2*u_cloudAngle));
 		 color_normals  = (color_normals * 2.0) - 1.0;
-		 water_color_normals  = (water_color_normals * 2.0) - 1.0;
+		 water_color_normals1  = (water_color_normals1 * 2.0) - 1.0;
+		 water_color_normals2  = (water_color_normals2 * 2.0) - 1.0;
+		 water_color_normals3  = (water_color_normals3 * 2.0) - 1.0;
+		 water_color_normals4  = (water_color_normals4 * 2.0) - 1.0;
+		 water_color_normals5  = (water_color_normals5 * 2.0) - 1.0;
+		 water_color_normals6  = (water_color_normals6 * 2.0) - 1.0;
+
+		 vec4 water_color_normals = water_color_normals1 + water_color_normals2 + water_color_normals3 + water_color_normals4 + water_color_normals5 + water_color_normals6;
 
 //normalize the interpolated normal
 	vertNorm_interpolated = normalize(v_vertNormal);

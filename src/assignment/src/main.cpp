@@ -30,8 +30,8 @@ namespace
 	core_str::String billboardVS("/shaders/billboardVS.glsl");
 	core_str::String billboardFS("/shaders/tlocOneTexturePlusLightStencilFS.glsl");
 
-
-
+	core_str::String oneTextureVS("/shaders/tlocOneTextureVS.glsl");
+	core_str::String oneTextureFS("/shaders/tlocOneTextureFS.glsl");
 
 	core_str::String splitVS("/shaders/splitVS.glsl");
 	core_str::String splitFS("/shaders/splitFS.glsl");
@@ -201,6 +201,17 @@ private:
 	Scene					scene_main;			//the scene from the application
 	Scene					scene_skybox;		//scene for skybox
 
+	//------------------------------------------------------------------------
+
+	Scene rttScene;
+	gfx_rend::renderer_sptr rttRenderer;
+	SkyBoxMeshRenderSystem	rttMeshRenderSystem; //SkyBoxRenderSystem
+	gfx::Rtt*  rtt;
+	TextureObject rttTo;
+	Material rttMaterial;
+	Entity rttQuad;
+	//------------------------------------------------------------------------
+
 	MeshRenderSystem		meshSystem_main;	//the render systems
 	MeshRenderSystem		meshSystem_skybox;
 
@@ -260,13 +271,27 @@ private:
 
 
 	//initialize the objects
-		globe = new Object(scene_main, "/models/globe.obj", globeMaterial);
+		//globe = new Object(scene_main, "/models/globe.obj", globeMaterial);
 
-		moon  = new Object(scene_main, "/models/globe.obj", moonMaterial);
+		//moon = new Object(scene_main, "/models/globe.obj", moonMaterial);
+		globe = new Object(rttScene, "/models/globe.obj", globeMaterial);
+
+		moon = new Object(rttScene, "/models/globe.obj", moonMaterial);
 		moon->SetPosition(moonPosition);
 		moon->SetScale(6.0f);
 
-		sun   = new Billboard(scene_main, lightMaterial);
+
+		//---------------------------------------------------------------------------------
+		math_t::Rectf32_c rect(math_t::Rectf32_c::width(2.0f),
+			math_t::Rectf32_c::height(2.0f));
+		rttQuad = scene_main->CreatePrefab<pref_gfx::Quad>()
+			.Dimensions(rect).DispatchTo(meshSystem_main.get()).Create();
+		scene_main->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(rttQuad, rttMaterial));
+		//---------------------------------------------------------------------------------
+
+
+		//sun   = new Billboard(scene_main, lightMaterial);
+		sun = new Billboard(rttScene, lightMaterial);
 		sun->SetPosition(lightPosition);
 
 		skybox = new Object(scene_skybox, "/models/skybox.obj", skyboxMaterial);
@@ -279,6 +304,7 @@ private:
 					
 	//initialize the skybox scene
 		scene_skybox->Initialize();
+		rttScene->Initialize();
 
 
 		return Application::Post_Initialize();
@@ -287,26 +313,53 @@ private:
 //load the scene
 	void loadScene()
 	{
+		//---------------------------------------------------------
+		rtt = new gfx::Rtt(core_ds::MakeTuple(800, 600));
+		rttTo = rtt->AddColorAttachment(0);
+
+		rttRenderer = rtt->GetRenderer();
+
+
+		rttScene = core_sptr::MakeShared<core_cs::ECS>();
+		rttScene->AddSystem<gfx_cs::CameraSystem>();							//add camera
+		rttScene->AddSystem<gfx_cs::MaterialSystem>();							//add material system
+		rttMeshRenderSystem = rttScene->AddSystem<gfx_cs::MeshRenderSystem>();	//add mesh render system
+		rttScene->AddSystem<gfx_cs::ArcBallSystem>();							//add the arc ball system
+		cameraControl = rttScene->AddSystem<input_cs::ArcBallControlSystem>();	//add the control system
+
+
+
+
+		rttMeshRenderSystem->SetRenderer(rttRenderer);
+
+
+		//---------------------------------------------------------
+
+
+
+
 		scene_main = GetScene();
 							scene_main->AddSystem<gfx_cs::MaterialSystem>();			//add material system
-							scene_main->AddSystem<gfx_cs::CameraSystem>();				//add camera
+							//scene_main->AddSystem<gfx_cs::CameraSystem>();				//add camera
 		meshSystem_main =	scene_main->AddSystem<gfx_cs::MeshRenderSystem>();			//add mesh render system	
-							scene_main->AddSystem<gfx_cs::ArcBallSystem>();				//add the arc ball system
-		cameraControl =		scene_main->AddSystem<input_cs::ArcBallControlSystem>();	//add the control system
+							//scene_main->AddSystem<gfx_cs::ArcBallSystem>();				//add the arc ball system
+		//cameraControl =		scene_main->AddSystem<input_cs::ArcBallControlSystem>();	//add the control system
 
 
 	//create skybox renderer
-		gfx_rend::Renderer::Params skyboxRenderParams(GetRenderer()->GetParams());
-		skyboxRenderParams.SetDepthWrite(false);
+		gfx_rend::Renderer::Params skyboxRenderParams(rttRenderer->GetParams());
+		//gfx_rend::Renderer::Params skyboxRenderParams(GetRenderer()->GetParams());
+		//skyboxRenderParams.SetDepthWrite(false);
 		renderer_skybox = core_sptr::MakeShared<gfx_rend::Renderer>(skyboxRenderParams);
 
 	//set up scene_main renderer
-		auto renderParams = GetRenderer()->GetParams();
+		//auto renderParams = GetRenderer()->GetParams();
+		auto renderParams = rttRenderer->GetParams();
 		renderParams.RemoveClearBit<gfx_rend::p_renderer::clear::ColorBufferBit>()
 					.Enable<gfx_rend::p_renderer::enable_disable::Blend>()
 					.SetClearColor(gfx_t::Color(0.0f, 0.0f, 0.0f, 0.0f))
 					.SetBlendFunction<gfx_rend::p_renderer::blend_function::SourceAlpha, gfx_rend::p_renderer::blend_function::OneMinusSourceAlpha>();
-		GetRenderer()->SetParams(renderParams);
+		rttRenderer->SetParams(renderParams);
 
 
 	//intialize the skybox scene
@@ -323,7 +376,8 @@ private:
 	//create and set the camera
 		auto camera = createCamera(true, 0.1f, 100.0f, 90.0f, cameraPosition);
 
-		meshSystem_main->SetCamera(camera);
+		//meshSystem_main->SetCamera(camera);
+		rttMeshRenderSystem->SetCamera(camera);
 		meshSystem_skybox->SetCamera(camera);
 
 
@@ -334,16 +388,27 @@ private:
 //create all the materials for the program
 	void createMaterials()
 	{
-		globeMaterial  = createMaterial(scene_main,		globeVS,		globeFS);
+		/*globeMaterial  = createMaterial(scene_main,		globeVS,		globeFS);
 		moonMaterial   = createMaterial(scene_main,		globeVS,		moonFS);
 		skyboxMaterial = createMaterial(scene_skybox,	skyboxVS,		skyboxFS);
-		lightMaterial  = createMaterial(scene_main,		billboardVS,	billboardFS);
+		lightMaterial  = createMaterial(scene_main,		billboardVS,	billboardFS);*/
+
+
+		//---------------------------------------------------------------------------------
+
+
+		globeMaterial = createMaterial(rttScene, globeVS, globeFS);
+		moonMaterial = createMaterial(rttScene, globeVS, moonFS);
+		skyboxMaterial = createMaterial(scene_skybox, skyboxVS, skyboxFS);
+		lightMaterial = createMaterial(rttScene, billboardVS, billboardFS);
+		rttMaterial = createMaterial(scene_main, oneTextureVS, oneTextureFS);
+		//---------------------------------------------------------------------------------
 	}
 
 //create a camera
 	entity_ptr createCamera(bool isPerspectiveView, float nearPlane, float farPlane, float verticalFOV_degrees, math_t::Vec3f32 position)
 	{
-		entity_ptr cameraEntity = scene_main->CreatePrefab<pref_gfx::Camera>()
+		/*entity_ptr cameraEntity = scene_main->CreatePrefab<pref_gfx::Camera>()
 			.Perspective(isPerspectiveView)
 			.Near(nearPlane)
 			.Far(farPlane)
@@ -352,6 +417,18 @@ private:
 			
 		scene_main->CreatePrefab<pref_gfx::ArcBall>().Add(cameraEntity);
 		scene_main->CreatePrefab<pref_input::ArcBallControl>()
+			.GlobalMultiplier(math_t::Vec2f(0.01f, 0.01f))
+			.Add(cameraEntity);*/
+
+		entity_ptr cameraEntity = rttScene->CreatePrefab<pref_gfx::Camera>()
+			.Perspective(isPerspectiveView)
+			.Near(nearPlane)
+			.Far(farPlane)
+			.VerticalFOV(math_t::Degree(verticalFOV_degrees))
+			.Create(GetWindow()->GetDimensions());
+
+		rttScene->CreatePrefab<pref_gfx::ArcBall>().Add(cameraEntity);
+		rttScene->CreatePrefab<pref_input::ArcBallControl>()
 			.GlobalMultiplier(math_t::Vec2f(0.01f, 0.01f))
 			.Add(cameraEntity);
 
@@ -500,6 +577,16 @@ private:
 		lightMaterial->GetShaderOperator()->AddUniform(*diffuse);
 	}
 
+//set the rtt's texture uniforms
+	void setRttTextures()
+	{
+		//set the uniforms
+		gfx_gl::uniform_vso diffuse;  diffuse->SetName("s_texture").SetValueAs(*rttTo);
+
+		//add to shader
+		rttMaterial->GetShaderOperator()->AddUniform(*diffuse);
+	}
+
 //set the skybox texture uniform
 	void setSkyboxTextures()
 	{
@@ -520,6 +607,7 @@ private:
 		setGlobeTextures();
 		setSkyboxTextures();
 		setSunTextures();
+		setRttTextures();
 	}
 
 
@@ -530,6 +618,10 @@ private:
 
 		renderer_skybox->ApplyRenderSettings();
 		renderer_skybox->Render();
+
+		rttScene->Process(delta);
+		rttRenderer->ApplyRenderSettings();
+		rttRenderer->Render();
 	}
 
 	void DoUpdate(sec_type delta) override

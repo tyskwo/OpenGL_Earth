@@ -41,6 +41,12 @@ namespace
 
 	core_str::String combineVS("/shaders/combineVS.glsl");
 	core_str::String combineFS("/shaders/combineFS.glsl");
+
+	core_str::String shaderPathGodrayVS("/shaders/tlocPostProcessGodrayVS.glsl");
+	core_str::String shaderPathGodrayFS("/shaders/tlocPostProcessGodrayFS.glsl");
+
+	core_str::String shaderPathAdditiveVS("/shaders/tlocOneTextureVS.glsl");
+	core_str::String shaderPathAdditiveFS("/shaders/tlocAdditiveBlendingFS.glsl");
 };
 
 
@@ -312,7 +318,7 @@ private:
 		//---------------------------------------------------------
 		rtt = new gfx::Rtt(core_ds::MakeTuple(800, 600));
 		rttTo = rtt->AddColorAttachment(0);
-
+		rtt->AddDepthAttachment();
 		rttRenderer = rtt->GetRenderer();
 
 
@@ -324,6 +330,8 @@ private:
 		cameraControl = rttScene->AddSystem<input_cs::ArcBallControlSystem>();	//add the control system
 
 
+
+		
 
 
 		rttMeshRenderSystem->SetRenderer(rttRenderer);
@@ -350,9 +358,9 @@ private:
 			.RemoveClearBit<gfx_rend::p_renderer::clear::ColorBufferBit>()
 			.Enable<gfx_rend::p_renderer::enable_disable::Blend>()
 			.SetClearColor(gfx_t::Color(0.0f, 0.0f, 0.0f, 0.0f))
-			.Enable<gfx_rend::p_renderer::enable_disable::CullFace>()
-			.Cull<gfx_rend::p_renderer::cull_face::Back>()
-			.SetBlendFunction<gfx_rend::p_renderer::blend_function::SourceAlpha, gfx_rend::p_renderer::blend_function::OneMinusSourceAlpha>();
+			//.Enable<gfx_rend::p_renderer::enable_disable::CullFace>()
+			//.Cull<gfx_rend::p_renderer::cull_face::Back>()
+			.SetBlendFunction<gfx_rend::p_renderer::blend_function::SourceAlpha, gfx_rend::p_renderer::blend_function::OneMinusSourceAlpha>(); ///THIS LINE MAKES MOON TRANSPARENT
 		rttRenderer->SetParams(renderParams);
 
 

@@ -195,7 +195,6 @@ private:
 	Object*  globe;				//the globe
 	Object*  moon;				//the globe
 	Object*  skybox;			//the 'space' box
-	Object*  sun;
 	Billboard* light;
 
 	//program specific variables
@@ -290,7 +289,10 @@ private:
 		SkyBoxRenderer = core_sptr::MakeShared<gfx_rend::Renderer>(skyboxRenderParams);
 
 		auto renderParams = GetRenderer()->GetParams();
-		renderParams.RemoveClearBit<gfx_rend::p_renderer::clear::ColorBufferBit>();
+		renderParams.RemoveClearBit<gfx_rend::p_renderer::clear::ColorBufferBit>().Enable<gfx_rend::p_renderer::enable_disable::Blend>()
+			.SetClearColor(gfx_t::Color(0.0f, 0.0f, 0.0f, 0.0f))
+			.SetBlendFunction<gfx_rend::p_renderer::blend_function::SourceAlpha,
+			gfx_rend::p_renderer::blend_function::OneMinusSourceAlpha>();
 		GetRenderer()->SetParams(renderParams);
 
 		skyBoxScene = core_sptr::MakeShared<core_cs::ECS>();
@@ -304,7 +306,7 @@ private:
 
 		//set the background color
 		gfx_rend::Renderer::Params clearColor(GetRenderer()->GetParams());
-		clearColor.SetClearColor(gfx_t::Color(0.06f, 0.06f, 0.08f, 1.0f));
+		clearColor.SetClearColor(gfx_t::Color(0.0f, 0.0f, 0.0f, 0.0f));
 		GetRenderer()->SetParams(clearColor);
 
 		auto camera = createCamera(true, 0.1f, 100.0f, 90.0f, cameraPosition);

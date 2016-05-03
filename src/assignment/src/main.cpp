@@ -341,14 +341,18 @@ private:
 
 	//create skybox renderer
 		gfx_rend::Renderer::Params skyboxRenderParams(rttRenderer->GetParams());
+		skyboxRenderParams.SetDepthWrite(false);
 		renderer_skybox = core_sptr::MakeShared<gfx_rend::Renderer>(skyboxRenderParams);
 
 	//set up scene_main renderer
 		auto renderParams = rttRenderer->GetParams();
-		renderParams.RemoveClearBit<gfx_rend::p_renderer::clear::ColorBufferBit>()
-					.Enable<gfx_rend::p_renderer::enable_disable::Blend>()
-					.SetClearColor(gfx_t::Color(0.0f, 0.0f, 0.0f, 0.0f))
-					.SetBlendFunction<gfx_rend::p_renderer::blend_function::SourceAlpha, gfx_rend::p_renderer::blend_function::OneMinusSourceAlpha>();
+		renderParams
+			.RemoveClearBit<gfx_rend::p_renderer::clear::ColorBufferBit>()
+			.Enable<gfx_rend::p_renderer::enable_disable::Blend>()
+			.SetClearColor(gfx_t::Color(0.0f, 0.0f, 0.0f, 0.0f))
+			.Enable<gfx_rend::p_renderer::enable_disable::CullFace>()
+			.Cull<gfx_rend::p_renderer::cull_face::Back>()
+			.SetBlendFunction<gfx_rend::p_renderer::blend_function::SourceAlpha, gfx_rend::p_renderer::blend_function::OneMinusSourceAlpha>();
 		rttRenderer->SetParams(renderParams);
 
 
@@ -366,7 +370,6 @@ private:
 	//create and set the camera
 		auto camera = createCamera(true, 0.1f, 100.0f, 90.0f, cameraPosition);
 
-		//meshSystem_main->SetCamera(camera);
 		rttMeshRenderSystem->SetCamera(camera);
 		meshSystem_skybox->SetCamera(camera);
 
@@ -578,16 +581,14 @@ private:
 		setRttTextures();
 	}
 
-
-
 	void Pre_Render(sec_type delta) override
 	{
 		scene_skybox->Process(delta);
+		rttScene->Process(delta);
 
 		renderer_skybox->ApplyRenderSettings();
 		renderer_skybox->Render();
 
-		rttScene->Process(delta);
 		rttRenderer->ApplyRenderSettings();
 		rttRenderer->Render();
 	}

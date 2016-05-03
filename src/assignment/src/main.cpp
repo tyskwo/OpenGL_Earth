@@ -271,9 +271,6 @@ private:
 
 
 	//initialize the objects
-		//globe = new Object(scene_main, "/models/globe.obj", globeMaterial);
-
-		//moon = new Object(scene_main, "/models/globe.obj", moonMaterial);
 		globe = new Object(rttScene, "/models/globe.obj", globeMaterial);
 
 		moon = new Object(rttScene, "/models/globe.obj", moonMaterial);
@@ -290,7 +287,6 @@ private:
 		//---------------------------------------------------------------------------------
 
 
-		//sun   = new Billboard(scene_main, lightMaterial);
 		sun = new Billboard(rttScene, lightMaterial);
 		sun->SetPosition(lightPosition);
 
@@ -340,20 +336,14 @@ private:
 
 		scene_main = GetScene();
 							scene_main->AddSystem<gfx_cs::MaterialSystem>();			//add material system
-							//scene_main->AddSystem<gfx_cs::CameraSystem>();				//add camera
 		meshSystem_main =	scene_main->AddSystem<gfx_cs::MeshRenderSystem>();			//add mesh render system	
-							//scene_main->AddSystem<gfx_cs::ArcBallSystem>();				//add the arc ball system
-		//cameraControl =		scene_main->AddSystem<input_cs::ArcBallControlSystem>();	//add the control system
 
 
 	//create skybox renderer
 		gfx_rend::Renderer::Params skyboxRenderParams(rttRenderer->GetParams());
-		//gfx_rend::Renderer::Params skyboxRenderParams(GetRenderer()->GetParams());
-		//skyboxRenderParams.SetDepthWrite(false);
 		renderer_skybox = core_sptr::MakeShared<gfx_rend::Renderer>(skyboxRenderParams);
 
 	//set up scene_main renderer
-		//auto renderParams = GetRenderer()->GetParams();
 		auto renderParams = rttRenderer->GetParams();
 		renderParams.RemoveClearBit<gfx_rend::p_renderer::clear::ColorBufferBit>()
 					.Enable<gfx_rend::p_renderer::enable_disable::Blend>()
@@ -388,38 +378,16 @@ private:
 //create all the materials for the program
 	void createMaterials()
 	{
-		/*globeMaterial  = createMaterial(scene_main,		globeVS,		globeFS);
-		moonMaterial   = createMaterial(scene_main,		globeVS,		moonFS);
-		skyboxMaterial = createMaterial(scene_skybox,	skyboxVS,		skyboxFS);
-		lightMaterial  = createMaterial(scene_main,		billboardVS,	billboardFS);*/
-
-
-		//---------------------------------------------------------------------------------
-
-
 		globeMaterial = createMaterial(rttScene, globeVS, globeFS);
 		moonMaterial = createMaterial(rttScene, globeVS, moonFS);
 		skyboxMaterial = createMaterial(scene_skybox, skyboxVS, skyboxFS);
 		lightMaterial = createMaterial(rttScene, billboardVS, billboardFS);
 		rttMaterial = createMaterial(scene_main, oneTextureVS, oneTextureFS);
-		//---------------------------------------------------------------------------------
 	}
 
 //create a camera
 	entity_ptr createCamera(bool isPerspectiveView, float nearPlane, float farPlane, float verticalFOV_degrees, math_t::Vec3f32 position)
 	{
-		/*entity_ptr cameraEntity = scene_main->CreatePrefab<pref_gfx::Camera>()
-			.Perspective(isPerspectiveView)
-			.Near(nearPlane)
-			.Far(farPlane)
-			.VerticalFOV(math_t::Degree(verticalFOV_degrees))
-			.Create(GetWindow()->GetDimensions());
-			
-		scene_main->CreatePrefab<pref_gfx::ArcBall>().Add(cameraEntity);
-		scene_main->CreatePrefab<pref_input::ArcBallControl>()
-			.GlobalMultiplier(math_t::Vec2f(0.01f, 0.01f))
-			.Add(cameraEntity);*/
-
 		entity_ptr cameraEntity = rttScene->CreatePrefab<pref_gfx::Camera>()
 			.Perspective(isPerspectiveView)
 			.Near(nearPlane)

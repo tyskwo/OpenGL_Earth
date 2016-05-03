@@ -34,6 +34,10 @@ namespace
 
 	core_str::String combineVS("/shaders/combineVS.glsl");
 	core_str::String combineFS("/shaders/combineFS.glsl");
+
+	//VS and FS for Billboard
+	core_str::String shaderPathOneTextureBillboardVS("/shaders/tlocOneTextureBillboardVS.glsl");
+	core_str::String shaderPathOneTextureBillboardFS("/shaders/tlocOneTexturePlusLightStencilFS.glsl");
 };
 
 
@@ -141,6 +145,42 @@ private:
 	};
 
 
+	//struct for a Billboard
+	struct Billboard
+	{
+	private:
+		Scene				scene;			//reference to the scene
+		Entity				mesh;			//the object's mesh
+		Material			material;		//the object's material
+
+	public:
+		//intialize and create the object
+		Billboard(Scene sceneReference, Material materialReference)
+		{
+			scene = sceneReference;
+
+			mesh = createMesh();
+			material = materialReference;
+
+			scene->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(mesh, material));
+		}
+
+		//getters for the mesh and material
+		Entity	 GetMesh()		{ return mesh; }
+		Material GetMaterial()  { return material; }
+
+		//setters for the mesh and material
+		void SetMesh(Entity mesh)			    { this->mesh = mesh; }
+		void SetMaterial(Material material)     { this->material = material; }
+
+		//create mesh from given object path
+		Entity createMesh()
+		{
+			auto rect = math_t::Rectf32_c(math_t::Rectf32_c::width(1.5f), math_t::Rectf32_c::height(1.5f));
+			return scene->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).Create();
+		}
+	};
+
 	//variables
 	Scene					scene;			//the scene from the application
 	Scene					skyBoxScene;	//scene for skybox
@@ -150,11 +190,13 @@ private:
 	Material globeMaterial;		//the globe material
 	Material moonMaterial;		//the moons material
 	Material skyboxMaterial;	//the skybox material
+	Material lightMaterial; 	//the light material
 
 	Object*  globe;				//the globe
 	Object*  moon;				//the globe
 	Object*  skybox;			//the 'space' box
-
+	Object*  sun;
+	Billboard* light;
 
 	//program specific variables
 	float			earthAngle = 0.0f;
@@ -183,14 +225,31 @@ private:
 		globeMaterial = createMaterial(scene, globeShaderPathVS, globeShaderPathFS);
 		moonMaterial = createMaterial(scene, globeShaderPathVS, moonShaderPathFS);
 		skyboxMaterial = createMaterial(skyBoxScene, skyboxShaderPathVS, skyboxShaderPathFS);
+		lightMaterial = createMaterial(scene, shaderPathOneTextureBillboardVS, shaderPathOneTextureBillboardFS);
 
 		//add uniforms to the shaders
 		addUniforms();
 
+
+		//---------------------------------------------------------------------------------
+
+		lightMaterial->SetEnableUniform<gfx_cs::p_material::uniforms::k_viewProjectionMatrix>(false);
+		lightMaterial->SetEnableUniform<gfx_cs::p_material::uniforms::k_viewMatrix>();
+		lightMaterial->SetEnableUniform<gfx_cs::p_material::uniforms::k_projectionMatrix>();
+
+
+		//---------------------------------------------------------------------------------
+
+
 		//initialize the objects
 		globe = new Object(scene, "/models/globe.obj", globeMaterial);
 		moon = new Object(scene, "/models/globe.obj", moonMaterial);
-		
+
+		//---------------------------------------------------------------------------------
+		light = new Billboard(scene, lightMaterial);
+		light->GetMesh()->GetComponent<math_cs::Transform>()->SetPosition(lightPosition);
+		//---------------------------------------------------------------------------------
+
 
 		auto moonTransform = moon->GetMesh()->GetComponent<math_cs::Transform>();
 		moonTransform->SetScale(moonTransform->GetScale() / 6.0f);
@@ -238,7 +297,6 @@ private:
 		skyBoxScene->AddSystem<gfx_cs::MaterialSystem>();							//add material system
 		skyBoxMeshRenderSystem = skyBoxScene->AddSystem<gfx_cs::MeshRenderSystem>();	//add mesh render system
 		skyBoxMeshRenderSystem->SetRenderer(SkyBoxRenderer);
-
 
 		//set renderer
 		meshSystem->SetRenderer(GetRenderer());
@@ -394,6 +452,19 @@ private:
 		moonMaterial->GetShaderOperator()->AddUniform(*normals);
 	}
 
+	//set the globe's texture uniforms
+	void setLightTextures()
+	{
+		//load the textures
+		auto lightTexture = app_res::f_resource::LoadImageAsTextureObject(core_io::Path(GetAssetsPath() + core_str::String("/images/light.png")));
+
+		//set the uniforms
+		gfx_gl::uniform_vso diffuse;  diffuse->SetName("s_texture").SetValueAs(*lightTexture);
+
+		//add to shader
+		lightMaterial->GetShaderOperator()->AddUniform(*diffuse);
+	}
+
 	//set the skybox texture uniform
 	void setSkyboxTextures()
 	{
@@ -413,6 +484,7 @@ private:
 		setMoonTextures();
 		setGlobeTextures();
 		setSkyboxTextures();
+		setLightTextures();
 	}
 
 	void Pre_Render(sec_type delta) override

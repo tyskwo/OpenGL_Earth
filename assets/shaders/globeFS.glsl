@@ -51,6 +51,7 @@ void main()
 		 water_color_normals6  = (water_color_normals6 * 2.0) - 1.0;
 
 		 vec4 water_color_normals = water_color_normals1 + water_color_normals2 + water_color_normals3 + water_color_normals4 + water_color_normals5 + water_color_normals6;
+		 water_color_normals = water_color_normals / 6.0;
 
 //normalize the interpolated normal
 	vertNorm_interpolated = normalize(v_vertNormal);

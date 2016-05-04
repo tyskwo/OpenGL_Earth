@@ -7,7 +7,6 @@ out vec4 o_color;
 uniform sampler2D s_texture;
 uniform sampler2D s_bright;
 uniform float     u_exposure;
-uniform int       u_blur = 5;
 
 void main()
 {

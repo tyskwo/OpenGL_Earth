@@ -7,7 +7,7 @@
 
 	uniform sampler2D moon_diffuse;				//texture that holds the earth map		
 	uniform sampler2D moon_normals;				//texture for earth normals
-    uniform vec3 u_lightColor = vec3(5, 5, 5);
+    uniform vec3 u_lightColor = vec3(1.5, 1.5, 1.5);
 
 
 			vec4	  color;					//the color of the sphere
@@ -45,6 +45,7 @@ void main()
 	o_color = color + specular;
 
 	o_color = o_color * vec4(u_lightColor, 1.0);
+	o_color.a = 1.0f;
 	
 	float brightness = dot(o_color.rgb, vec3(0.2126, 0.7152, 0.0722));
 	if (brightness > 1.0) { o_bright = o_color; }
@@ -53,6 +54,6 @@ void main()
 //gamma correction
 	/*o_color.r = pow(o_color.r, 1.0f / 2.2f);
 	o_color.g = pow(o_color.g, 1.0f / 2.2f);
-	o_color.b = pow(o_color.b, 1.0f / 2.2f);*/
-	o_color.a = 1.0f;
+	o_color.b = pow(o_color.b, 1.0f / 2.2f);
+	o_color.a = 1.0f;*/
 }

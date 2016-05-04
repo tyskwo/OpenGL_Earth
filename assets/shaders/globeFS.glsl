@@ -11,6 +11,7 @@
 	uniform sampler2D earth_clouds;				//texture that holds the earth's clouds
 	uniform sampler2D earth_normals;			//texture for earth normals
 	uniform sampler2D water_normals;			//texture for earth normals
+    uniform vec3 u_lightColor = vec3(5, 5, 5);
 
 	uniform float	  u_cloudAngle;				//amount to shift clouds by
 
@@ -24,7 +25,8 @@
 			float	  specularIntensity = 1.1;
 
 
-	out		vec4	   o_color;					//the color to pass to the renderer
+	layout (location = 0) out		vec4	   o_color;					//the color to pass to the renderer
+	layout (location = 1) out       vec4       o_bright;                //the bright values of the scene
 
 	
 //random value function
@@ -87,10 +89,16 @@ void main()
 	
 //pass the calculated color to the renderer; combine the specular with the interpolated color
 	o_color = color + specular;
+	o_color = o_color * vec4(u_lightColor, 1.0);
+
+	float brightness = dot(o_color.rgb, vec3(0.2126, 0.7152, 0.0722));
+	if (brightness > 1.0) { o_bright = o_color; }
+	else { o_bright = vec4(0, 0, 0, 1); }
+
 
 //gamma correction
-	o_color.r = pow(o_color.r, 1.0f / 2.2f);
+	/*o_color.r = pow(o_color.r, 1.0f / 2.2f);
 	o_color.g = pow(o_color.g, 1.0f / 2.2f);
-	o_color.b = pow(o_color.b, 1.0f / 2.2f);
+	o_color.b = pow(o_color.b, 1.0f / 2.2f);*/
 	o_color.a = 1.0f;
 }

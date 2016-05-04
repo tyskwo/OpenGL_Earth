@@ -23,6 +23,7 @@
 			float	  shininess = 60;			//specular lighting values
 			float	  specularIntensity = 1.1;
 
+
 	out		vec4	   o_color;					//the color to pass to the renderer
 
 	
@@ -65,13 +66,14 @@ void main()
 	vertNorm_interpolated = normalize(v_vertNormal);
 
 //get the diffuse and specular multipliers
-	float diffuseMultiplier  = dot(vertNorm_interpolated * color_normals.rgb, v_lightDirection);
-	float waterDiffuseMultiplier  = dot(vertNorm_interpolated * water_color_normals.rgb, v_lightDirection);
-	float specularMultiplier = dot(vertNorm_interpolated,				  v_lightDirection);
+	float diffuseMultiplier       = dot(vertNorm_interpolated * color_normals.rgb,			v_lightDirection);
+	float waterDiffuseMultiplier  = dot(vertNorm_interpolated * water_color_normals.rgb,	v_lightDirection);
+	float specularMultiplier      = dot(vertNorm_interpolated,								v_lightDirection);
 
-	vec4 land = color_diffuse * diffuseMultiplier * abs(color_specular - 1.0f);
-	vec4 sea = color_diffuse * color_specular * waterDiffuseMultiplier;
-	vec4 night = color_night * (1.0f - diffuseMultiplier);
+//get the correct colors from each of the textures and the appropriate multipliers
+	vec4 land	= color_diffuse * diffuseMultiplier * abs(color_specular - 1.0f);
+	vec4 sea	= color_diffuse * color_specular * waterDiffuseMultiplier;
+	vec4 night	= color_night * (1.0f - diffuseMultiplier);
 	vec4 clouds = color_clouds * (diffuseMultiplier);
 
 //get the interpolated color based on the diffuse texture, night texture, and clouds texture (if clouds are to be drawn)

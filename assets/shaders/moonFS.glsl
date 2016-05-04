@@ -4,13 +4,16 @@
 	in		vec3	  v_vertNormal;				//the vertext normal
 	in		vec2	  v_texCoord;				//the texture coordinate for the vertex
 
+
 	uniform sampler2D moon_diffuse;				//texture that holds the earth map		
 	uniform sampler2D moon_normals;				//texture for earth normals
+
 
 			vec4	  color;					//the color of the sphere
 			vec3	  vertNorm_interpolated;	//the interpolated normal from each vertex
 			float	  shininess = 40;			//specular lighting values
 			float	  specularIntensity = 1.15f;
+
 
 	out		vec4	   o_color;					//the color to pass to the renderer
 

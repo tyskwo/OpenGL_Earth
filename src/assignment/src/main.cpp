@@ -314,6 +314,8 @@ private:
 	float			starTwinkleTime  = 0.0f;		//current time
 	float			starTwinkleDelta = 0.005f;
 
+	float			bloomExposure	 = 1.5f;
+
 	math_t::Vec3f32 lightPosition  = math_t::Vec3f32(  -1,    0,    3); //-x so that the mountains cast correct shadows.
 	math_t::Vec3f32 cameraPosition = math_t::Vec3f32(   0,    0,    2);
 	math_t::Vec3f32 moonPosition   = math_t::Vec3f32(1.6f, 0.0f, 0.0f);
@@ -446,17 +448,18 @@ private:
 	//set up sun renderer is the same as the rtt renderer
 		auto sunRenderer = rttRenderer;
 
-		rttBlurHor->GetRenderer()->SetParams(rttRenderParams);
-		rttBlurVert->GetRenderer()->SetParams(rttRenderParams);
+		//rttBlurHor->GetRenderer()->SetParams(rttRenderParams);
+		//rttBlurVert->GetRenderer()->SetParams(rttRenderParams);
 
-		scn_BlurHor->SetRenderer(rttBlurHor->GetRenderer());
-		scn_BlurVert->SetRenderer(rttBlurVert->GetRenderer());
+		
 
 	//set renderers
 		scn_main->SetRenderer(rttRenderer);
 		scn_skybox->SetRenderer(skyboxRenderer);
 		scn_sun->SetRenderer(sunRenderer);
 		scn_rtt->SetRenderer(GetRenderer());
+		scn_BlurHor->SetRenderer(rttBlurHor->GetRenderer());
+		scn_BlurVert->SetRenderer(rttBlurVert->GetRenderer());
 	}
 
 //create all the materials for the program
@@ -655,14 +658,14 @@ private:
 //set the rtt's texture uniforms
 	void setRttTextures()
 	{
-		//set the uniforms
+	//set the uniforms
 		//gfx_gl::uniform_vso diffuse;  diffuse->SetName("s_texture").SetValueAs(*rttTo);
 
 		gfx_gl::uniform_vso u_rttColTo; u_rttColTo->SetName("s_texture").SetValueAs(*rttTo);
 
 		gfx_gl::uniform_vso u_rttBrightTo; u_rttBrightTo->SetName("s_bright").SetValueAs(*brightTo);
 
-		gfx_gl::uniform_vso u_exposure; u_exposure->SetName("u_exposure").SetValueAs(3.5f);
+		gfx_gl::uniform_vso u_exposure; u_exposure->SetName("u_exposure").SetValueAs(bloomExposure);
 
 
 
@@ -736,13 +739,13 @@ private:
 		scn_main->renderer->ApplyRenderSettings();
 		scn_main->renderer->Render();
 
-		for (int i = 0; i < 5; ++i)
+		for (int i = 0; i < 9; ++i)
 		{
 			scn_BlurHor->ecs->Update(delta);
 			scn_BlurHor->ecs->Process(delta);
 
-			scn_BlurHor->renderer->ApplyRenderSettings();
-			scn_BlurHor->renderer->Render();
+			//scn_BlurHor->renderer->ApplyRenderSettings();
+			//scn_BlurHor->renderer->Render();
 
 			scn_BlurVert->ecs->Update(delta);
 			scn_BlurVert->ecs->Process(delta);

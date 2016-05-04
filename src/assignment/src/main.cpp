@@ -364,9 +364,10 @@ private:
 	
 
 	//initialize the rtt quad
-		math_t::Rectf32_c rect(math_t::Rectf32_c::width(1.0f), math_t::Rectf32_c::height(1.0f));
+		math_t::Rectf32_c rect2(math_t::Rectf32_c::width(1.0f), math_t::Rectf32_c::height(1.0f));
+		math_t::Rectf32_c rect(math_t::Rectf32_c::width(2.0f), math_t::Rectf32_c::height(2.0f));
 
-		rttQuad = scn_rtt->ecs->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).DispatchTo(scn_rtt->renderSystem.get()).Create();
+		rttQuad = scn_rtt->ecs->CreatePrefab<pref_gfx::Quad>().Dimensions(rect2).DispatchTo(scn_rtt->renderSystem.get()).Create();
 		rttHorQuad = scn_BlurHor->ecs->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).DispatchTo(scn_BlurHor->renderSystem.get()).Create();
 		rttVertQuad = scn_BlurVert->ecs->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).DispatchTo(scn_BlurVert->renderSystem.get()).Create();
 
@@ -411,7 +412,7 @@ private:
 		rttBlurHor->AddDepthAttachment();
 
 		rttBlurVert = new gfx::Rtt(core_ds::MakeTuple(800, 600));
-		rttVertTo = rttBlurHor->AddColorAttachment<0>(brightTo);
+		rttVertTo = rttBlurVert->AddColorAttachment<0>(brightTo);
 		rttBlurVert->AddDepthAttachment();
 
 	//create the renderers for each scene
@@ -744,8 +745,8 @@ private:
 			scn_BlurHor->ecs->Update(delta);
 			scn_BlurHor->ecs->Process(delta);
 
-			//scn_BlurHor->renderer->ApplyRenderSettings();
-			//scn_BlurHor->renderer->Render();
+			scn_BlurHor->renderer->ApplyRenderSettings();
+			scn_BlurHor->renderer->Render();
 
 			scn_BlurVert->ecs->Update(delta);
 			scn_BlurVert->ecs->Process(delta);

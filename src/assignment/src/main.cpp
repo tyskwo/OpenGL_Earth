@@ -304,22 +304,36 @@ private:
 
 
 //program specific variables
-	float			earthAngle       = 0.0f;
-	float			earthAngleDelta  = 0.001f;
-	float			moonAngle		 = 0.0f;
-	float			moonAngleDelta	 = 50.0f;
-	float			moonDistance     = 1.5f;
-	float			cloudAngle       = 0.0f;
-	float			cloudAngleDelta  = -0.0001f;	//weather generally travels west->east.
-	float			starTwinkleTime  = 0.0f;		//current time
-	float			starTwinkleDelta = 0.005f;
 
-	float			bloomExposure	 = 1.5f;
+//rotation variables
+	float			earthAngle			= 0.0f;
+	float			earthAngleDelta		= 0.001f;
+	float			moonAngle			= 0.0f;
+	float			moonAngleDelta		= 50.0f;
+	float			moonDistance		= 1.5f;
+	float			cloudAngle			= 0.0f;
+	float			cloudAngleDelta		= -0.0001f;	//weather generally travels west->east.
 
-	math_t::Vec3f32 lightPosition  = math_t::Vec3f32(  -1,    0,    3); //-x so that the mountains cast correct shadows.
-	math_t::Vec3f32 cameraPosition = math_t::Vec3f32(   0,    0,    2);
-	math_t::Vec3f32 moonPosition   = math_t::Vec3f32(1.6f, 0.0f, 0.0f);
+//skybox variables
+	float			starTwinkleTime		= 0.0f;		//current time
+	float			starTwinkleDelta	= 0.005f;
 
+//bloom variables
+	float			bloomExposure		= 1.1f;
+	int				blurPasses			= 8;
+	float			shininess_earth		= 150.0f;	//lower = more shiny
+	float			intensity_earth		= 1.1f;
+	float			shininess_moon		= 2.0f;
+	float			intensity_moon		= 2.2f;
+	math_t::Vec3f32 sunIntensity		= math_t::Vec3f32(1.8f);
+
+
+//position variables
+	math_t::Vec3f32 sunPosition			= math_t::Vec3f32(  -2,    0,    6); //-x so that the mountains cast correct shadows.
+	math_t::Vec3f32 cameraPosition		= math_t::Vec3f32(   0,    0,    2);
+	math_t::Vec3f32 moonPosition		= math_t::Vec3f32(1.6f, 0.0f, 0.0f);
+
+//debug variables
 	bool cloudFlag = false;	//flag to draw the clouds
 
 
@@ -353,7 +367,7 @@ private:
 		moon->SetScale(6.0f);
 
 		sun = new Billboard(scn_sun, sunMaterial);
-		sun->SetPosition(lightPosition);
+		sun->SetPosition(sunPosition);
 
 		skybox = new Object(scn_skybox, "/models/skybox.obj", skyboxMaterial);
 
@@ -364,7 +378,7 @@ private:
 	
 
 	//initialize the rtt quad
-		math_t::Rectf32_c rect2(math_t::Rectf32_c::width(1.0f), math_t::Rectf32_c::height(1.0f));
+		math_t::Rectf32_c rect2(math_t::Rectf32_c::width(2.0f), math_t::Rectf32_c::height(2.0f));
 		math_t::Rectf32_c rect(math_t::Rectf32_c::width(2.0f), math_t::Rectf32_c::height(2.0f));
 
 		rttQuad = scn_rtt->ecs->CreatePrefab<pref_gfx::Quad>().Dimensions(rect2).DispatchTo(scn_rtt->renderSystem.get()).Create();
@@ -522,6 +536,7 @@ private:
 		setCloudFlag();
 		setStarTwinkle();
 		setTextures();
+		setBloomParameters();
 	}
 
 //set the matrices of the skybox and light material
@@ -540,8 +555,8 @@ private:
 //set the shader's light position
 	void setLightPosition()
 	{
-		gfx_gl::uniform_vso u_lightPosition; u_lightPosition->SetName("u_lightPosition").SetValueAs(lightPosition);
-		gfx_gl::uniform_vso u_lightColor; u_lightColor->SetName("u_lightColor").SetValueAs(math_t::Vec3f32(2.8f, 2.8f, 2.8f));
+		gfx_gl::uniform_vso u_lightPosition; u_lightPosition->SetName("u_lightPosition").SetValueAs(sunPosition);
+		gfx_gl::uniform_vso u_lightColor; u_lightColor->SetName("u_lightColor").SetValueAs(sunIntensity);
 
 		globeMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
 		moonMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
@@ -723,6 +738,23 @@ private:
 		setRttTextures();
 	}
 
+//set the paramters for bloom for easy tweaking
+	void setBloomParameters()
+	{
+		gfx_gl::uniform_vso u_shininessEarth; u_shininessEarth->SetName("shininess").SetValueAs(shininess_earth);
+		gfx_gl::uniform_vso u_shininessMoon;  u_shininessMoon->SetName("shininess").SetValueAs(shininess_moon);
+		gfx_gl::uniform_vso u_intensityEarth; u_intensityEarth->SetName("specularIntensity").SetValueAs(intensity_earth);
+		gfx_gl::uniform_vso u_intensityMoon;  u_intensityMoon->SetName("specularIntensity").SetValueAs(intensity_moon);
+
+
+
+
+		globeMaterial->GetShaderOperator()->AddUniform(*u_shininessEarth);
+		 moonMaterial->GetShaderOperator()->AddUniform(*u_shininessMoon);
+		globeMaterial->GetShaderOperator()->AddUniform(*u_intensityEarth);
+		 moonMaterial->GetShaderOperator()->AddUniform(*u_intensityMoon);
+	}
+
 	void DoRender(sec_type delta) override
 	{
 	//process the scenes
@@ -740,7 +772,7 @@ private:
 		scn_main->renderer->ApplyRenderSettings();
 		scn_main->renderer->Render();
 
-		for (int i = 0; i < 9; ++i)
+		for (int i = 0; i < blurPasses; ++i)
 		{
 			scn_BlurHor->ecs->Update(delta);
 			scn_BlurHor->ecs->Process(delta);

@@ -11,18 +11,17 @@
 	uniform sampler2D earth_clouds;				//texture that holds the earth's clouds
 	uniform sampler2D earth_normals;			//texture for earth normals
 	uniform sampler2D water_normals;			//texture for earth normals
-    uniform vec3 u_lightColor = vec3(1.5, 1.5, 1.5);
+
+    uniform vec3	  u_lightColor;				//bloom values
+	uniform float	  shininess;
+	uniform float	  specularIntensity;
 
 	uniform float	  u_cloudAngle;				//amount to shift clouds by
 
 	uniform int		  cloud_flag;			    //flag for whether to draw the clouds
 
-
 			vec4	  color;					//the color of the sphere
 			vec3	  vertNorm_interpolated;	//the interpolated normal from each vertex
-
-			float	  shininess = 60;			//specular lighting values
-			float	  specularIntensity = 1.1;
 
 
 	layout (location = 0) out		vec4	   o_color;					//the color to pass to the renderer
@@ -94,13 +93,6 @@ void main()
 
 
 	float brightness = dot(o_color.rgb, vec3(0.2126, 0.7152, 0.0722));
-	if (brightness > 1.0) { o_bright = o_color; }
-	else { o_bright = vec4(0, 0, 0, 1); }
-
-
-//gamma correction
-	/*o_color.r = pow(o_color.r, 1.0f / 2.2f);
-	o_color.g = pow(o_color.g, 1.0f / 2.2f);
-	o_color.b = pow(o_color.b, 1.0f / 2.2f);
-	o_color.a = 1.0f;*/
+	if (brightness > 1.0)	{ o_bright = o_color; }
+	else					{ o_bright = vec4(0, 0, 0, 1); }
 }

@@ -36,8 +36,8 @@ namespace
 	core_str::String splitVS("/shaders/splitVS.glsl");
 	core_str::String splitFS("/shaders/splitFS.glsl");
 
-	core_str::String bloomVS("/shaders/bloomVS.glsl");
-	core_str::String bloomFS("/shaders/bloomFS.glsl");
+	core_str::String bloomVS("/shaders/tlocBloomVS.glsl");
+	core_str::String bloomFS("/shaders/tlocBloomFS.glsl");
 
 	core_str::String combineVS("/shaders/combineVS.glsl");
 	core_str::String combineFS("/shaders/combineFS.glsl");
@@ -47,6 +47,9 @@ namespace
 
 	core_str::String shaderPathAdditiveVS("/shaders/tlocOneTextureVS.glsl");
 	core_str::String shaderPathAdditiveFS("/shaders/tlocAdditiveBlendingFS.glsl");
+
+	core_str::String shaderPathGaussianBlurVS("/shaders/tlocGaussianBlurVS.glsl");
+	core_str::String shaderPathGaussianBlurFS("/shaders/tlocGaussianBlurFS.glsl");
 };
 
 
@@ -258,7 +261,8 @@ private:
 	Scene*		scn_skybox;
 	Scene*		scn_sun;
 	Scene*		scn_rtt;
-
+	Scene*		scn_BlurHor;
+	Scene*		scn_BlurVert;
 
 
 
@@ -273,6 +277,8 @@ private:
 	Material skyboxMaterial;	//the skybox material
 	Material sunMaterial; 		//the light material
 	Material rttMaterial;
+	Material rttHorBlurMaterial;
+	Material rttVertBlurMaterial;
 
 
 	Object*		globe;			//the globe
@@ -284,8 +290,15 @@ private:
 
 
 	gfx::Rtt*		rtt;
+	gfx::Rtt*		rttBlurHor;
+	gfx::Rtt*		rttBlurVert;
 	TextureObject	rttTo;
+	TextureObject   brightTo;
+	TextureObject   rttHorTo;
+	TextureObject   rttVertTo;
 	Entity			rttQuad;
+	Entity			rttHorQuad;
+	Entity			rttVertQuad;
 
 
 
@@ -349,15 +362,25 @@ private:
 	
 
 	//initialize the rtt quad
-		math_t::Rectf32_c rect(math_t::Rectf32_c::width(2.0f), math_t::Rectf32_c::height(2.0f));
+		math_t::Rectf32_c rect(math_t::Rectf32_c::width(1.0f), math_t::Rectf32_c::height(1.0f));
+
 		rttQuad = scn_rtt->ecs->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).DispatchTo(scn_rtt->renderSystem.get()).Create();
+		rttHorQuad = scn_BlurHor->ecs->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).DispatchTo(scn_BlurHor->renderSystem.get()).Create();
+		rttVertQuad = scn_BlurVert->ecs->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).DispatchTo(scn_BlurVert->renderSystem.get()).Create();
+
+
+
 		scn_rtt->ecs->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(rttQuad, rttMaterial));
+		scn_BlurHor->ecs->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(rttHorQuad, rttHorBlurMaterial));
+		scn_BlurVert->ecs->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(rttVertQuad, rttVertBlurMaterial));
 
 
 	//initialize the skybox scene
 		scn_skybox->ecs->Initialize();
 		scn_sun->ecs->Initialize();
 		scn_rtt->ecs->Initialize();
+		scn_BlurHor->ecs->Initialize();
+		scn_BlurVert->ecs->Initialize();
 
 
 		return Application::Post_Initialize();
@@ -366,17 +389,28 @@ private:
 //load the scene
 	void loadScenes()
 	{
-		scn_main	= new Scene(GetScene());
-		scn_skybox	= new Scene();
-		scn_sun		= new Scene();
-		scn_rtt		= new Scene();
+		scn_main	 = new Scene(GetScene());
+		scn_skybox	 = new Scene();
+		scn_sun		 = new Scene();
+		scn_rtt	     = new Scene();
+		scn_BlurHor  = new Scene();
+		scn_BlurVert = new Scene();
 
 		cameraControl = scn_main->AddCamera();
 
 	//initialize rtt
 		rtt = new gfx::Rtt(core_ds::MakeTuple(800, 600));
-		rttTo = rtt->AddColorAttachment(0);
+		rttTo = rtt->AddColorAttachment<0, gfx_t::color_u16_rgba>();
+		brightTo = rtt->AddColorAttachment<1, gfx_t::color_u16_rgba>();
 		rtt->AddDepthAttachment();
+
+		rttBlurHor = new gfx::Rtt(core_ds::MakeTuple(800, 600));
+		rttHorTo = rttBlurHor->AddColorAttachment<0, gfx_t::color_u16_rgba>();
+		rttBlurHor->AddDepthAttachment();
+
+		rttBlurVert = new gfx::Rtt(core_ds::MakeTuple(800, 600));
+		rttVertTo = rttBlurHor->AddColorAttachment<0>(brightTo);
+		rttBlurVert->AddDepthAttachment();
 
 	//create the renderers for each scene
 		createRenderers();
@@ -412,6 +446,12 @@ private:
 	//set up sun renderer is the same as the rtt renderer
 		auto sunRenderer = rttRenderer;
 
+		rttBlurHor->GetRenderer()->SetParams(rttRenderParams);
+		rttBlurVert->GetRenderer()->SetParams(rttRenderParams);
+
+		scn_BlurHor->SetRenderer(rttBlurHor->GetRenderer());
+		scn_BlurVert->SetRenderer(rttBlurVert->GetRenderer());
+
 	//set renderers
 		scn_main->SetRenderer(rttRenderer);
 		scn_skybox->SetRenderer(skyboxRenderer);
@@ -426,7 +466,10 @@ private:
 		moonMaterial	= createMaterial(scn_main->ecs, globeVS, moonFS);
 		skyboxMaterial	= createMaterial(scn_skybox->ecs, skyboxVS, skyboxFS);
 		sunMaterial		= createMaterial(scn_main->ecs, billboardVS, billboardFS);
-		rttMaterial		= createMaterial(scn_rtt->ecs, oneTextureVS, oneTextureFS);
+		rttHorBlurMaterial = createMaterial(scn_BlurHor->ecs, shaderPathGaussianBlurVS, shaderPathGaussianBlurFS);
+		rttVertBlurMaterial = createMaterial(scn_BlurVert->ecs, shaderPathGaussianBlurVS, shaderPathGaussianBlurFS);
+		//rttMaterial		= createMaterial(scn_rtt->ecs, oneTextureVS, oneTextureFS);
+		rttMaterial = createMaterial(scn_rtt->ecs, bloomVS, bloomFS);
 	}
 
 //create a camera
@@ -494,9 +537,14 @@ private:
 	void setLightPosition()
 	{
 		gfx_gl::uniform_vso u_lightPosition; u_lightPosition->SetName("u_lightPosition").SetValueAs(lightPosition);
+		gfx_gl::uniform_vso u_lightColor; u_lightColor->SetName("u_lightColor").SetValueAs(math_t::Vec3f32(2.8f, 2.8f, 2.8f));
 
 		globeMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
 		moonMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
+
+		globeMaterial->GetShaderOperator()->AddUniform(*u_lightColor);
+		moonMaterial->GetShaderOperator()->AddUniform(*u_lightColor);
+		sunMaterial->GetShaderOperator()->AddUniform(*u_lightColor);
 	}
 
 //set the shader's cloud rotation
@@ -608,10 +656,42 @@ private:
 	void setRttTextures()
 	{
 		//set the uniforms
-		gfx_gl::uniform_vso diffuse;  diffuse->SetName("s_texture").SetValueAs(*rttTo);
+		//gfx_gl::uniform_vso diffuse;  diffuse->SetName("s_texture").SetValueAs(*rttTo);
+
+		gfx_gl::uniform_vso u_rttColTo; u_rttColTo->SetName("s_texture").SetValueAs(*rttTo);
+
+		gfx_gl::uniform_vso u_rttBrightTo; u_rttBrightTo->SetName("s_bright").SetValueAs(*brightTo);
+
+		gfx_gl::uniform_vso u_exposure; u_exposure->SetName("u_exposure").SetValueAs(3.5f);
+
+
 
 		//add to shader
-		rttMaterial->GetShaderOperator()->AddUniform(*diffuse);
+		rttMaterial->GetShaderOperator()->AddUniform(*u_rttColTo);
+		rttMaterial->GetShaderOperator()->AddUniform(*u_rttBrightTo);
+		rttMaterial->GetShaderOperator()->AddUniform(*u_exposure);
+	}
+
+//set the blurr hor texture uniforms
+	void setHorBlurTextures()
+	{
+		gfx_gl::uniform_vso u_rttBrightTo; u_rttBrightTo->SetName("s_texture").SetValueAs(*brightTo);
+
+		gfx_gl::uniform_vso u_horizontal; u_horizontal->SetName("u_horizontal").SetValueAs(1);
+
+		rttHorBlurMaterial->GetShaderOperator()->AddUniform(*u_rttBrightTo);
+		rttHorBlurMaterial->GetShaderOperator()->AddUniform(*u_horizontal);
+	}
+
+//set the blurr vert texture uniforms
+	void setVertBlurTextures()
+	{
+		gfx_gl::uniform_vso u_rttBrightTo; u_rttBrightTo->SetName("s_texture").SetValueAs(*rttHorTo);
+
+		gfx_gl::uniform_vso u_horizontal; u_horizontal->SetName("u_horizontal").SetValueAs(0);
+
+		rttVertBlurMaterial->GetShaderOperator()->AddUniform(*u_rttBrightTo);
+		rttVertBlurMaterial->GetShaderOperator()->AddUniform(*u_horizontal);
 	}
 
 //set the skybox texture uniform
@@ -634,17 +714,17 @@ private:
 		setGlobeTextures();
 		setSkyboxTextures();
 		setSunTextures();
+		setHorBlurTextures();
+		setVertBlurTextures();
 		setRttTextures();
 	}
-
 
 	void DoRender(sec_type delta) override
 	{
 	//process the scenes
-		scn_main->ecs->Process(delta);
 		scn_skybox->ecs->Process(delta);
 		scn_sun->ecs->Process(delta);
-		scn_rtt->ecs->Process(delta);
+		scn_main->ecs->Process(delta);
 
 	//render the scenes
 		scn_skybox->renderer->ApplyRenderSettings();
@@ -653,11 +733,28 @@ private:
 		scn_sun->renderer->ApplyRenderSettings();
 		scn_sun->renderer->Render();
 
-		scn_rtt->renderer->ApplyRenderSettings();
-		scn_rtt->renderer->Render();
-
 		scn_main->renderer->ApplyRenderSettings();
 		scn_main->renderer->Render();
+
+		for (int i = 0; i < 5; ++i)
+		{
+			scn_BlurHor->ecs->Update(delta);
+			scn_BlurHor->ecs->Process(delta);
+
+			scn_BlurHor->renderer->ApplyRenderSettings();
+			scn_BlurHor->renderer->Render();
+
+			scn_BlurVert->ecs->Update(delta);
+			scn_BlurVert->ecs->Process(delta);
+
+			scn_BlurVert->renderer->ApplyRenderSettings();
+			scn_BlurVert->renderer->Render();
+		}
+
+		scn_rtt->ecs->Update(delta);
+		scn_rtt->ecs->Process(delta);
+		scn_rtt->renderer->ApplyRenderSettings();
+		scn_rtt->renderer->Render();
 	}
 
 	void DoUpdate(sec_type delta) override

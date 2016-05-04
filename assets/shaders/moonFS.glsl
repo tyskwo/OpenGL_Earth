@@ -10,7 +10,7 @@
 			vec4	  color;					//the color of the sphere
 			vec3	  vertNorm_interpolated;	//the interpolated normal from each vertex
 			float	  shininess = 40;			//specular lighting values
-			float	  specularIntensity = 1.15;
+			float	  specularIntensity = 1.15f;
 
 	out		vec4	   o_color;					//the color to pass to the renderer
 
@@ -21,7 +21,7 @@ void main()
 //get the color for each texture at the given coordinate
 	vec4 color_diffuse  = texture2D(moon_diffuse, vec2(v_texCoord.s, 1 -v_texCoord.t));
 	vec4 color_normals  = texture2D(moon_normals, vec2(v_texCoord.s, 1 - v_texCoord.t));
-		 color_normals  = (color_normals * 2.0) - 1.0;
+		 color_normals  = (color_normals * 2.0f) - 1.0f;
 
 //normalize the interpolated normal
 	vertNorm_interpolated = normalize(v_vertNormal);
@@ -40,7 +40,8 @@ void main()
 	o_color = color + specular;
 
 //gamma correction
-	o_color.r = pow(o_color.r, 1.0 / 2.2);
-	o_color.g = pow(o_color.g, 1.0 / 2.2);
-	o_color.b = pow(o_color.b, 1.0 / 2.2);
+	o_color.r = pow(o_color.r, 1.0f / 2.2f);
+	o_color.g = pow(o_color.g, 1.0f / 2.2f);
+	o_color.b = pow(o_color.b, 1.0f / 2.2f);
+	o_color.a = 1.0f;
 }

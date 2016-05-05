@@ -6,6 +6,7 @@
 
 	uniform sampler2D skybox_diffuse;	//texture that holds the skybox	
 	uniform float     u_twinkleTime;	//current time to alter the twinkle
+	uniform vec3	  stencil_color;	//stencil color
 
 			vec3	  color;			//intermediary color
 
@@ -30,5 +31,5 @@ void main()
 
 //pass the color to the renderer
 	o_color = color;
-	o_stencil = vec4(0.01,0.01,0.01,1);
+	o_stencil = vec4(stencil_color,1);
 }

@@ -381,6 +381,7 @@ private:
 
 //debug variables
 	bool cloudFlag = false;	//flag to draw the clouds
+	int  renderFlag = 0;
 
 
 
@@ -803,6 +804,8 @@ private:
 		gfx_gl::uniform_vso u_rttGodray; u_rttGodray->SetName("s_godray").SetValueAs(*toGodRay);
 		gfx_gl::uniform_vso u_exposure; u_exposure->SetName("u_exposure").SetValueAs(bloomExposure);
 
+		gfx_gl::uniform_vso u_flag; u_flag->SetName("u_flag").SetValueAs(renderFlag);
+
 
 
 		//add to shader
@@ -810,6 +813,7 @@ private:
 		rttMaterial->GetShaderOperator()->AddUniform(*u_rttBrightTo);
 		rttMaterial->GetShaderOperator()->AddUniform(*u_rttGodray);
 		rttMaterial->GetShaderOperator()->AddUniform(*u_exposure);
+		rttMaterial->GetShaderOperator()->AddUniform(*u_flag);
 	}
 
 //set the blur hor texture uniforms
@@ -1054,6 +1058,33 @@ private:
 			updateCloudFlag();
 		}
 
+	//moon speed
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::z))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				moonAngleDelta += 0.1f;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				moonAngleDelta -= 0.1f;
+			}
+			TLOC_LOG_CORE_DEBUG() << "MOON::speed  " << moonAngleDelta;
+		}
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::p))
+		{
+			moonAngleDelta = 0.0f;
+		}
+
+	//render flags
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::a))
+		{ renderFlag = 0; TLOC_LOG_CORE_DEBUG() << "RENDER ALL"; }
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::b))
+		{ renderFlag = 1; TLOC_LOG_CORE_DEBUG() << "RENDER BLOOM"; }
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::g))
+		{ renderFlag = 2; TLOC_LOG_CORE_DEBUG() << "RENDER GODRAYS"; }
+		gfx_gl::f_shader_operator::GetUniform(*rttMaterial->GetShaderOperator(), "u_flag")->SetValueAs(renderFlag);
+
 	
 		bloomTweaking();
 		updateBloomParameters();
@@ -1247,11 +1278,11 @@ private:
 		{
 			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
 			{
-				decay += 0.01f;
+				decay += 0.005f;
 			}
 			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
 			{
-				decay -= 0.01f;
+				decay -= 0.005f;
 			}
 			TLOC_LOG_CORE_DEBUG() << "GODRAYS::decay  " << decay;
 		}

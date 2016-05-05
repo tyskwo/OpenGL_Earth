@@ -70,10 +70,12 @@ private:
 //typedefs
 	typedef ecs_ptr																			ECS;
 	typedef core::smart_ptr::VirtualPtr<graphics::component_system::MeshRenderSystem>		RenderSystem;
+	typedef core::smart_ptr::VirtualPtr<graphics::component_system::CameraSystem>			CameraSystem;
 	typedef core::smart_ptr::VirtualPtr<core::component_system::Entity>						Entity;
 	typedef core::smart_ptr::VirtualPtr<input::component_system::ArcBallControlSystem>		ArcBallControlSystem;
 	typedef gfx_cs::material_sptr 															Material;
 	typedef core::smart_ptr::SharedPtr<tloc::graphics::gl::TextureObject>					TextureObject;
+	typedef core::smart_ptr::SharedPtr<tloc::graphics::gl::TextureObjectShadow>				ShadowTextureObject;
 	typedef gfx_rend::renderer_sptr															Renderer;
 
 
@@ -87,6 +89,7 @@ private:
 		ECS				ecs;
 		RenderSystem	renderSystem;
 		Renderer		renderer;
+		CameraSystem    camSys;
 
 		Scene()
 		{
@@ -118,7 +121,7 @@ private:
 
 		ArcBallControlSystem AddCamera()
 		{
-					ecs->AddSystem<gfx_cs::CameraSystem>();				//add camera
+		   camSys = ecs->AddSystem<gfx_cs::CameraSystem>();				//add camera
 					ecs->AddSystem<gfx_cs::ArcBallSystem>();			//add the arc ball system
 			return	ecs->AddSystem<input_cs::ArcBallControlSystem>();	//add the control system
 		}
@@ -266,11 +269,18 @@ private:
 	Scene*		scn_GodRay;
 
 
-
 	Entity					camera;
 	ArcBallControlSystem	cameraControl;		//the camera controls
+	Entity					lightCam;
 
 
+
+	ShadowTextureObject depthTo;
+	Renderer            shadowRenderer;
+	RenderSystem        meshSys;
+	CameraSystem        camSys;
+	gfx_cs::Camera::matrix_type lightMVP;
+	math_cs::Transform::transform_type lightCamTrans;
 
 
 	Material globeMaterial;		//the globe material
@@ -295,7 +305,7 @@ private:
 	gfx::Rtt*		rttBlurHor;
 	gfx::Rtt*		rttBlurVert;
 	gfx::Rtt*		rttGodRays;
-
+	gfx::Rtt*       rttShadowMap;
 
 	TextureObject	rttTo;
 	TextureObject   brightTo;
@@ -344,6 +354,8 @@ private:
 	math_t::Vec3f32 sunPosition			= math_t::Vec3f32(			-2,    0,    6); //-x so that the mountains cast correct shadows.
 	math_t::Vec3f32 cameraPosition		= math_t::Vec3f32(			 3,    0,    1);
 	math_t::Vec3f32 moonPosition		= math_t::Vec3f32(moonDistance, 0.0f, 0.0f);
+	math_t::Vec3f32 lightDir;
+	math_t::Mat4f32 lightMVPBias;
 
 //debug variables
 	bool cloudFlag = false;	//flag to draw the clouds
@@ -365,6 +377,31 @@ private:
 
 	//create all necessary materials
 		createMaterials();
+
+		//---------------------------------------------------------------------------------------------------
+
+		camSys->Initialize();
+		camSys->ProcessActiveEntities();
+
+		lightCamTrans =
+			lightCam->GetComponent<math_cs::Transform>()->GetTransformation();
+
+		lightDir =
+			lightCamTrans.GetCol(2).ConvertTo<math_t::Vec3f32>();
+
+		// the bias matrix - this is need to convert the NDC coordinates to texture
+		// space coordinates (i.e. from -1,1 to 0,1).
+		// to put it another way: v_screen = v_NDC * 0.5 + 0.5;
+		lightMVPBias = math_t::Mat4f32(0.5f, 0.0f, 0.0f, 0.5f,
+			0.0f, 0.5f, 0.0f, 0.5f,
+			0.0f, 0.0f, 0.5f, 0.5f,
+			0.0f, 0.0f, 0.0f, 1.0f);
+
+		lightMVP =
+			lightCam->GetComponent<gfx_cs::Camera>()->GetViewProjRef();
+
+		lightMVP = lightMVPBias * lightMVP;
+		//---------------------------------------------------------------------------------------------------
 
 
 	//add uniforms to the shaders
@@ -388,6 +425,12 @@ private:
 	//TO DO: update description
 		setMatrices();	
 	
+
+
+		
+
+
+
 
 	//initialize the rtt quad
 		math_t::Rectf32_c rect2(math_t::Rectf32_c::width(2.0f), math_t::Rectf32_c::height(2.0f));
@@ -427,7 +470,16 @@ private:
 		scn_BlurVert = new Scene();
 		scn_GodRay   = new Scene();
 
+		meshSys = scn_main->renderSystem;
+
 		cameraControl = scn_main->AddCamera();
+		camSys = scn_main->camSys;
+
+		//-----------------------------------------------------------------------------------
+		rttShadowMap = new gfx::Rtt(core_ds::MakeTuple(800, 600));
+		depthTo = rttShadowMap->AddShadowDepthAttachment();
+		//-----------------------------------------------------------------------------------
+
 
 	//initialize rtt
 		rtt = new gfx::Rtt(core_ds::MakeTuple(800, 600));
@@ -453,6 +505,22 @@ private:
 
 	//create and set the camera
 		camera = createCamera(true, 0.1f, 100.0f, 90.0f, cameraPosition);
+
+		//------------------------------------------------------------------
+		lightCam = scn_main->ecs->CreatePrefab<pref_gfx::Camera>()
+			.Perspective(true)
+			.Near(1.0f)
+			.Far(20.0f)
+			.VerticalFOV(math_t::Degree(60.0f))
+			.Position(sunPosition)
+			.Create(GetWindow()->GetDimensions());
+
+		lightCam->GetComponent<gfx_cs::Camera>()->
+			LookAt(math_t::Vec3f32::ZERO);
+		//------------------------------------------------------------------
+
+
+
 
 		scn_main->renderSystem->SetCamera(camera);
 		scn_skybox->renderSystem->SetCamera(camera);
@@ -487,7 +555,18 @@ private:
 		texParams.Wrap_S<gfx_gl::p_texture_object::wrap_technique::Repeat>();
 		toGodRay->SetParams(texParams);
 
-		
+		//------------------------------------------------------------------------------------------
+		gfx_rend::Renderer::Params rttShadowParams(rttShadowMap->GetRenderer()->GetParams());
+		rttShadowParams.SetClearColor(gfx_t::Color::COLOR_WHITE)
+			.AddClearBit <gfx_rend::p_renderer::clear::ColorBufferBit>()
+			.AddClearBit <gfx_rend::p_renderer::clear::DepthBufferBit>()
+			.Enable <gfx_rend::p_renderer::enable_disable::DepthTest>()
+			.Enable <gfx_rend::p_renderer::enable_disable::CullFace>()
+			.Cull <gfx_rend::p_renderer::cull_face::Back>();
+		rttShadowMap->GetRenderer()->SetParams(rttShadowParams);
+		shadowRenderer = rttShadowMap->GetRenderer();
+		//------------------------------------------------------------------------------------------
+
 
 	//set renderers
 		scn_main->SetRenderer(rttRenderer);
@@ -560,6 +639,7 @@ private:
 		setCloudFlag();
 		setStarTwinkle();
 		setTextures();
+		setShadows();
 		setBloomParameters();
 		setGodRayParameters();
 	}
@@ -800,6 +880,24 @@ private:
 		rttGodRayMaterial->GetShaderOperator()->AddUniform(*u_illumDecay);
 	}
 
+	void setShadows()
+	{
+		gfx_gl::uniform_vso  u_lightMVP; u_lightMVP->SetName("u_lightMVP").SetValueAs(lightMVP);
+
+		gfx_gl::uniform_vso  u_toShadowMap; u_toShadowMap->SetName("s_shadowMap").SetValueAs(*depthTo);
+
+		gfx_gl::uniform_vso u_imgDim; u_imgDim->SetName("u_imgDim").SetValueAs(math_t::Vec2f32((f32)800, (f32)600));
+
+		globeMaterial->GetShaderOperator()->AddUniform(*u_lightMVP);
+		moonMaterial->GetShaderOperator()->AddUniform(*u_lightMVP);
+
+		globeMaterial->GetShaderOperator()->AddUniform(*u_imgDim);
+		moonMaterial->GetShaderOperator()->AddUniform(*u_imgDim);
+
+		globeMaterial->GetShaderOperator()->AddUniform(*u_toShadowMap);
+		moonMaterial->GetShaderOperator()->AddUniform(*u_toShadowMap);
+	}
+
 //update the bloom parameters (for tweaking)
 	void updateBloomParameters()
 	{
@@ -817,6 +915,16 @@ private:
 
 	void DoRender(sec_type delta) override
 	{
+		meshSys->SetCamera(lightCam);
+		meshSys->SetRenderer(shadowRenderer);
+		scn_main->ecs->Process(1.0 / 60.0);
+
+		shadowRenderer->ApplyRenderSettings();
+		shadowRenderer->Render();
+
+		meshSys->SetCamera(camera);
+		meshSys->SetRenderer(scn_main->renderer);
+
 	//process the scenes
 		scn_skybox->ecs->Process(delta);
 		scn_sun->ecs->Process(delta);
@@ -888,7 +996,6 @@ private:
 	//increase time for twinkle
 		starTwinkleTime += starTwinkleDelta;
 		updateStarTwinkle();
-
 
 	//focus the camera back on the mesh
 		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::f))

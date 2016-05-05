@@ -347,8 +347,28 @@ private:
 	float			intensity_moon		= 2.9f;
 	math_t::Vec3f32 sunIntensity		= math_t::Vec3f32(1.6f);
 
-//godray variables
+	float			default_bloomExposure = 1.2f;
+	int				default_blurPasses = 18;
+	float			default_shininess_earth = 35.0f;	//lower = more shiny
+	float			default_intensity_earth = 0.3f;
+	float			default_shininess_moon = 1.0f;
+	float			default_intensity_moon = 2.9f;
+	math_t::Vec3f32 default_sunIntensity = math_t::Vec3f32(1.6f);
 
+//godray variables
+	int				numberSamples		= 200;
+	float			density				= 0.2f;
+	float			decay				= 0.98f;
+	float			weight				= 0.5f;
+	float			godrayExposure		= 0.16f;
+	float			illumination		= 0.8f;
+
+	int				default_numberSamples = 200;
+	float			default_density = 0.2f;
+	float			default_decay = 0.98f;
+	float			default_weight = 0.5f;
+	float			default_godrayExposure = 0.16f;
+	float			default_illumination = 0.8f;
 
 //position variables
 	math_t::Vec3f32 sunPosition			= math_t::Vec3f32(			-2,    0,    6); //-x so that the mountains cast correct shadows.
@@ -851,9 +871,10 @@ private:
 		 moonMaterial->GetShaderOperator()->AddUniform(*u_intensityMoon);
 	}
 
+//set the paramters for godrays for easy tweaking
 	void setGodRayParameters()
 	{
-		gfx_gl::uniform_vso  u_toStencil;  u_toStencil->SetName("s_stencil").SetValueAs(*rttTo);
+		gfx_gl::uniform_vso  u_toStencil;  u_toStencil->SetName("s_stencil").SetValueAs(*toColStencil);
 		gfx_gl::uniform_vso  u_numSamples; u_numSamples->SetName("u_numSamples").SetValueAs(200);
 		gfx_gl::uniform_vso  u_density;    u_density->SetName("u_density").SetValueAs(0.2f);
 		gfx_gl::uniform_vso  u_decay;      u_decay->SetName("u_decay").SetValueAs(0.98f);
@@ -902,6 +923,19 @@ private:
 		gfx_gl::f_shader_operator::GetUniform(*globeMaterial->GetShaderOperator(), "u_lightColor")->SetValueAs(sunIntensity);
 		gfx_gl::f_shader_operator::GetUniform(*moonMaterial->GetShaderOperator(),  "u_lightColor")->SetValueAs(sunIntensity);
 		gfx_gl::f_shader_operator::GetUniform(*sunMaterial->GetShaderOperator(),   "u_lightColor")->SetValueAs(sunIntensity);
+	}
+
+//update the bloom parameters (for tweaking)
+	void updateGodrayParameters()
+	{
+		gfx_gl::f_shader_operator::GetUniform(*rttGodRayMaterial->GetShaderOperator(), "u_numSamples")->SetValueAs(numberSamples);
+		gfx_gl::f_shader_operator::GetUniform(*rttGodRayMaterial->GetShaderOperator(), "u_density")->SetValueAs(density);
+		gfx_gl::f_shader_operator::GetUniform(*rttGodRayMaterial->GetShaderOperator(), "u_decay")->SetValueAs(decay);
+
+		gfx_gl::f_shader_operator::GetUniform(*rttGodRayMaterial->GetShaderOperator(), "u_weight")->SetValueAs(weight);
+
+		gfx_gl::f_shader_operator::GetUniform(*rttGodRayMaterial->GetShaderOperator(), "u_exposure")->SetValueAs(godrayExposure);
+		gfx_gl::f_shader_operator::GetUniform(*rttGodRayMaterial->GetShaderOperator(), "u_illumDecay")->SetValueAs(illumination);
 	}
 
 	void DoRender(sec_type delta) override
@@ -993,9 +1027,13 @@ private:
 		starTwinkleTime += starTwinkleDelta;
 		updateStarTwinkle();
 
+
+
 	//focus the camera back on the mesh
 		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::f))
 		{ camera->GetComponent<gfx_cs::ArcBall>()->SetFocus(math_t::Vec3f32(0, 0, 0)); }
+
+
 
 	//draw the clouds?
 		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::c))
@@ -1009,8 +1047,31 @@ private:
 			updateCloudFlag();
 		}
 
-	//exposure
-		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::p))
+	
+		bloomTweaking();
+		updateBloomParameters();
+
+		godrayTweaking();
+		updateGodrayParameters();
+
+
+	//call Application's DoUpdate for camera controls
+		Application::DoUpdate(delta);
+	}
+
+//keyboard controls for tweaking bloom parameters
+		//  + up/down arrow keys
+		//1: blur count
+		//2: exposure
+		//3: sun light intensity
+		//4: earth specular intensity
+		//5: moon specular intensity
+		//6: earth shininess
+		//7: moon shininess
+	void bloomTweaking()
+	{
+		//exposure
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::n2))
 		{
 			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
 			{
@@ -1020,11 +1081,11 @@ private:
 			{
 				bloomExposure -= 0.1f;
 			}
-			TLOC_LOG_CORE_DEBUG() << bloomExposure;
+			TLOC_LOG_CORE_DEBUG() << "BLOOM::exposure  " << bloomExposure;
 		}
 
-	//earth shininess
-		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::e))
+		//earth shininess
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::n6))
 		{
 			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
 			{
@@ -1034,11 +1095,11 @@ private:
 			{
 				shininess_earth -= 1.0f;
 			}
-			TLOC_LOG_CORE_DEBUG() << shininess_earth;
+			TLOC_LOG_CORE_DEBUG() << "BLOOM::earth::shininess  " << shininess_earth;
 		}
 
-	//moon shininess
-		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::m))
+		//moon shininess
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::n7))
 		{
 			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
 			{
@@ -1048,11 +1109,11 @@ private:
 			{
 				shininess_moon -= 1.0f;
 			}
-			TLOC_LOG_CORE_DEBUG() << shininess_moon;
+			TLOC_LOG_CORE_DEBUG() << "BLOOM::moon::shininess  " << shininess_moon;
 		}
 
-	//earth intensity
-		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::w))
+		//earth intensity
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::n4))
 		{
 			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
 			{
@@ -1062,11 +1123,11 @@ private:
 			{
 				intensity_earth -= 0.1f;
 			}
-			TLOC_LOG_CORE_DEBUG() << intensity_earth;
+			TLOC_LOG_CORE_DEBUG() << "BLOOM::earth::intensity  " << intensity_earth;
 		}
 
-	//moon intensity
-		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::n))
+		//moon intensity
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::n5))
 		{
 			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
 			{
@@ -1076,11 +1137,11 @@ private:
 			{
 				intensity_moon -= 0.1f;
 			}
-			TLOC_LOG_CORE_DEBUG() << intensity_moon;
+			TLOC_LOG_CORE_DEBUG() << "BLOOM::moon::intensity  " << intensity_moon;
 		}
 
-	//light intensity
-		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::s))
+		//light intensity
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::n3))
 		{
 			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
 			{
@@ -1090,11 +1151,11 @@ private:
 			{
 				sunIntensity[0] -= 0.1f; sunIntensity[1] -= 0.1f; sunIntensity[2] -= 0.1f;
 			}
-			TLOC_LOG_CORE_DEBUG() << sunIntensity[0];
+			TLOC_LOG_CORE_DEBUG() << "BLOOM::sun::intensity  " << sunIntensity[0];
 		}
 
-	//blur intensity
-		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::b))
+		//blur intensity
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::n1))
 		{
 			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
 			{
@@ -1104,30 +1165,160 @@ private:
 			{
 				blurPasses--;
 			}
-			TLOC_LOG_CORE_DEBUG() << blurPasses;
+			TLOC_LOG_CORE_DEBUG() << "BLOOM::blur passes  " << blurPasses;
 		}
 
-	//default values
+		//default values
 		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::d))
 		{
-			bloomExposure	= 1.2f;
-			blurPasses		= 18;
-			sunIntensity[0] = 1.6f; sunIntensity[1] = 1.6f; sunIntensity[2] = 1.6f;
-			intensity_earth = 0.3f;
-			intensity_moon  = 2.9f;
-			shininess_earth = 35.0f;
-			shininess_moon  = 1.0f;
+			bloomExposure	= default_bloomExposure;
+			blurPasses		= default_blurPasses;
+			sunIntensity[0] = default_sunIntensity[0]; sunIntensity[1] = default_sunIntensity[1]; sunIntensity[2] = default_sunIntensity[2];
+			intensity_earth = default_intensity_earth;
+			intensity_moon	= default_intensity_moon;
+			shininess_earth = default_shininess_earth;
+			shininess_moon	= default_shininess_moon;
 
-			TLOC_LOG_CORE_DEBUG() << "DEFAULT";
+			TLOC_LOG_CORE_DEBUG() << "RETURNED TO DEFAULT";
 		}
 
+		//set default values
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::enter_main))
+		{
+			default_bloomExposure	= bloomExposure;
+			default_blurPasses		= blurPasses;
+			default_sunIntensity	= sunIntensity;
+			default_intensity_earth = intensity_earth;
+			default_intensity_moon	= intensity_moon;
+			default_shininess_earth = shininess_earth;
+			default_shininess_moon	= shininess_moon;
 
-		updateBloomParameters();
+			TLOC_LOG_CORE_DEBUG() << "SET TO DEFAULT";
+		}	}
+	
+//keyboard controls for tweaking godray parameters
+		//  + up/down arrow keys
+		//q: samples
+		//w: decay
+		//e: density
+		//r: weight
+		//t: exposure
+		//y: illumination
+	void godrayTweaking()
+	{
+		//samples
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::q))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				numberSamples += 20;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				numberSamples -= 20;
+			}
+			TLOC_LOG_CORE_DEBUG() << "GODRAYS::samples  " << numberSamples;
+		}
 
+		//density
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::w))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				density += 0.01f;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				density -= 0.01f;
+			}
+			TLOC_LOG_CORE_DEBUG() << "GODRAYS::density  " << density;
+		}
 
-	//call Application's DoUpdate for camera controls
-		Application::DoUpdate(delta);
+		//decay
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::e))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				decay += 0.01f;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				decay -= 0.01f;
+			}
+			TLOC_LOG_CORE_DEBUG() << "GODRAYS::decay  " << decay;
+		}
+
+		//weight
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::r))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				weight += 0.1f;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				weight -= 0.1f;
+			}
+			TLOC_LOG_CORE_DEBUG() << "GODRAYS::weight  " << weight;
+		}
+
+		//godrayExposure
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::t))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				godrayExposure += 0.1f;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				godrayExposure -= 0.1f;
+			}
+			TLOC_LOG_CORE_DEBUG() << "GODRAYS::exposure  " << godrayExposure;
+		}
+
+		//illumination
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::y))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				illumination += 0.1f;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				illumination -= 0.1f;
+			}
+			TLOC_LOG_CORE_DEBUG() << "GODRAYS::illumination  " << illumination;
+		}
+
+		//return default values
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::d))
+		{
+			numberSamples	= default_numberSamples;
+			decay			= default_decay;
+			density			= default_density;
+			weight			= default_weight;
+			godrayExposure	= default_godrayExposure;
+			illumination	= default_illumination;
+
+			TLOC_LOG_CORE_DEBUG() << "RETURNED TO DEFAULT";
+		}
+
+		//set default values
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::enter_main))
+		{
+			default_numberSamples	= numberSamples;
+			default_decay			= decay;
+			default_density			= density;
+			default_weight			= weight;
+			default_godrayExposure	= godrayExposure;
+			default_illumination	= illumination;
+
+			TLOC_LOG_CORE_DEBUG() << "SET TO DEFAULT";
+		}
 	}
+
+		//d: return to default settings
+		//Enter: set new defaults
 };
 
 

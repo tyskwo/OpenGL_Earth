@@ -21,6 +21,7 @@ uniform vec2            u_imgDim;
 
 	layout (location = 0)	out	vec4	   o_color;					//the color to pass to the renderer
 	layout (location = 1)	out vec4       o_bright;                //the bright values of the scene
+	layout (location = 2)	out	vec4	   o_stencil;                //the bright values of the scene
 
 	
 
@@ -90,4 +91,7 @@ void main()
 	float brightness = dot(o_color.rgb, vec3(0.2126, 0.7152, 0.0722));
 	if (brightness > 1.0) { o_bright = o_color; }
 	else { o_bright = vec4(0, 0, 0, 1); }
+
+
+	o_stencil = vec4(0,0,0,1);
 }

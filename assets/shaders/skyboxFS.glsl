@@ -9,7 +9,9 @@
 
 			vec3	  color;			//intermediary color
 
-	out		vec3	  o_color;			//the color to pass to the renderer
+	layout (location = 0) out		vec3	  o_color;			//the color to pass to the renderer
+	layout (location = 2) out		vec4      o_stencil;                //the bright values of the scene
+
 
 
 //random hash table. http://stackoverflow.com/questions/12964279/whats-the-origin-of-this-glsl-rand-one-liner
@@ -28,4 +30,5 @@ void main()
 
 //pass the color to the renderer
 	o_color = color;
+	o_stencil = vec4(0.01,0.01,0.01,1);
 }

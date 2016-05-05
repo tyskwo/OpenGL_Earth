@@ -20,6 +20,7 @@ void main()
   vec2 lightPosScreen = v_lightPosOnScreen.xy;
 
   vec2 deltaTexCoord = vec2(v_texCoord - lightPosScreen);
+  float lengthCount = length(deltaTexCoord);
   deltaTexCoord = normalize(deltaTexCoord);
   vec2 texCoo = v_texCoord;
   deltaTexCoord *= 1.0 / float(u_numSamples) * u_density;
@@ -30,11 +31,16 @@ void main()
 
   for (int i = 0; i < u_numSamples; i++)
   {
-    texCoo -= deltaTexCoord;
-    vec4 sample = texture2D(s_stencil, texCoo);
-    sample *= illumDec * u_weight;
-    rays += sample;
-    illumDec *= u_decay;
+  		if(lengthCount > 0)
+		{ 
+		texCoo -= deltaTexCoord;
+		lengthCount -= length(deltaTexCoord);
+		}
+
+			vec4 sample = texture2D(s_stencil, texCoo);
+			sample *= illumDec * u_weight;
+			rays += sample;
+			illumDec *= u_decay;
   }
 
   o_color = rays * u_exposure;

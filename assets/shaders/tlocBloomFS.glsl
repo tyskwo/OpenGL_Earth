@@ -6,6 +6,7 @@ out vec4 o_color;
 
 uniform sampler2D s_texture;
 uniform sampler2D s_bright;
+uniform sampler2D s_godray;
 uniform float     u_exposure;
 
 void main()
@@ -17,10 +18,12 @@ void main()
 
 	vec3 hdr    = texture2D(s_texture, vec2(v_texCoord[0], v_texCoord[1])).rgb;
 	vec3 bright = texture2D(s_bright, vec2(v_texCoord[0], v_texCoord[1])).rgb;
+	vec3 godray = texture2D(s_godray, vec2(v_texCoord[0], v_texCoord[1])).rgb;
 
   // this is taken from learnopengl.com
   const float gamma = 1.0;
   hdr += bright; // additive blending
+  hdr += godray; // additive blending
   // tone mapping
   vec3 result = vec3(1.0) - exp(-hdr * u_exposure);
   // also gamma correct while we're at it       

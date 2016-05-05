@@ -418,33 +418,29 @@ private:
 		sun = new Billboard(scn_sun, sunMaterial);
 		sun->SetPosition(sunPosition);
 
-		skybox = new Object(scn_skybox, "/models/skybox.obj", skyboxMaterial);
-
-
-	//set the matrix values
-	//TO DO: update description
-		setMatrices();	
-	
-
-
-		
+		skybox = new Object(scn_skybox, "/models/skybox.obj", skyboxMaterial);		
 
 
 
 
 	//initialize the rtt quad
-		math_t::Rectf32_c rect2(math_t::Rectf32_c::width(2.0f), math_t::Rectf32_c::height(2.0f));
 		math_t::Rectf32_c rect(math_t::Rectf32_c::width(2.0f), math_t::Rectf32_c::height(2.0f));
 
-		rttQuad = scn_rtt->ecs->CreatePrefab<pref_gfx::Quad>().Dimensions(rect2).DispatchTo(scn_rtt->renderSystem.get()).Create();
+		rttQuad = scn_rtt->ecs->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).DispatchTo(scn_rtt->renderSystem.get()).Create();
 		rttHorQuad = scn_BlurHor->ecs->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).DispatchTo(scn_BlurHor->renderSystem.get()).Create();
 		rttVertQuad = scn_BlurVert->ecs->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).DispatchTo(scn_BlurVert->renderSystem.get()).Create();
-
+		rttGodRayQuad = scn_GodRay->ecs->CreatePrefab<pref_gfx::Quad>().Dimensions(rect).DispatchTo(scn_GodRay->renderSystem.get()).Create();
 
 
 		scn_rtt->ecs->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(rttQuad, rttMaterial));
 		scn_BlurHor->ecs->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(rttHorQuad, rttHorBlurMaterial));
 		scn_BlurVert->ecs->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(rttVertQuad, rttVertBlurMaterial));
+		scn_GodRay->ecs->GetEntityManager()->InsertComponent(core_cs::EntityManager::Params(rttGodRayQuad, rttGodRayMaterial));
+
+
+	//set the matrix values
+	//TO DO: update description
+		setMatrices();
 
 
 	//initialize the skybox scene
@@ -496,7 +492,7 @@ private:
 		rttVertTo = rttBlurVert->AddColorAttachment<0>(brightTo);
 		rttBlurVert->AddDepthAttachment();
 
-		rttGodRays = new gfx::Rtt(core_ds::MakeTuple(800, 600));
+		rttGodRays = new gfx::Rtt(core_ds::Divide(1u, GetWindow()->GetDimensions()));
 		toGodRay = rttGodRays->AddColorAttachment(0);
 		rttGodRays->AddDepthAttachment();
 
@@ -525,6 +521,7 @@ private:
 		scn_main->renderSystem->SetCamera(camera);
 		scn_skybox->renderSystem->SetCamera(camera);
 		scn_sun->renderSystem->SetCamera(camera);
+		scn_GodRay->renderSystem->SetCamera(camera);
 
 	//set up the mouse and keyboard
 		registerInputDevices();
@@ -549,11 +546,6 @@ private:
 
 	//set up sun renderer is the same as the rtt renderer
 		auto sunRenderer = rttRenderer;
-
-		auto texParams = toGodRay->GetParams();
-		texParams.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
-		texParams.Wrap_S<gfx_gl::p_texture_object::wrap_technique::Repeat>();
-		toGodRay->SetParams(texParams);
 
 		//------------------------------------------------------------------------------------------
 		gfx_rend::Renderer::Params rttShadowParams(rttShadowMap->GetRenderer()->GetParams());
@@ -657,7 +649,7 @@ private:
 		sunMaterial->SetEnableUniform<gfx_cs::p_material::uniforms::k_projectionMatrix>();
 
 		rttGodRayMaterial->SetEnableUniform<gfx_cs::p_material::uniforms::k_viewProjectionMatrix>();
-		rttGodRayMaterial->SetEnableUniform<gfx_cs::p_renderable::uniforms::k_modelMatrix>(false);
+		rttGodRayQuad->GetComponent<gfx_cs::Mesh>()->SetEnableUniform<gfx_cs::p_renderable::uniforms::k_modelMatrix>(false);
 	}
 
 //set the shader's light position
@@ -668,6 +660,7 @@ private:
 
 		globeMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
 		moonMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
+		rttGodRayMaterial->GetShaderOperator()->AddUniform(*u_lightPosition);
 
 		globeMaterial->GetShaderOperator()->AddUniform(*u_lightColor);
 		moonMaterial->GetShaderOperator()->AddUniform(*u_lightColor);
@@ -783,12 +776,9 @@ private:
 	void setRttTextures()
 	{
 	//set the uniforms
-		//gfx_gl::uniform_vso diffuse;  diffuse->SetName("s_texture").SetValueAs(*rttTo);
-
 		gfx_gl::uniform_vso u_rttColTo; u_rttColTo->SetName("s_texture").SetValueAs(*rttTo);
-
 		gfx_gl::uniform_vso u_rttBrightTo; u_rttBrightTo->SetName("s_bright").SetValueAs(*brightTo);
-
+		gfx_gl::uniform_vso u_rttGodray; u_rttGodray->SetName("s_godray").SetValueAs(*toGodRay);
 		gfx_gl::uniform_vso u_exposure; u_exposure->SetName("u_exposure").SetValueAs(bloomExposure);
 
 
@@ -796,6 +786,7 @@ private:
 		//add to shader
 		rttMaterial->GetShaderOperator()->AddUniform(*u_rttColTo);
 		rttMaterial->GetShaderOperator()->AddUniform(*u_rttBrightTo);
+		rttMaterial->GetShaderOperator()->AddUniform(*u_rttGodray);
 		rttMaterial->GetShaderOperator()->AddUniform(*u_exposure);
 	}
 
@@ -862,7 +853,7 @@ private:
 
 	void setGodRayParameters()
 	{
-		gfx_gl::uniform_vso  u_toStencil;  u_toStencil->SetName("s_stencil").SetValueAs(*toColStencil);
+		gfx_gl::uniform_vso  u_toStencil;  u_toStencil->SetName("s_stencil").SetValueAs(*rttTo);
 		gfx_gl::uniform_vso  u_numSamples; u_numSamples->SetName("u_numSamples").SetValueAs(200);
 		gfx_gl::uniform_vso  u_density;    u_density->SetName("u_density").SetValueAs(0.2f);
 		gfx_gl::uniform_vso  u_decay;      u_decay->SetName("u_decay").SetValueAs(0.98f);
@@ -954,6 +945,11 @@ private:
 			scn_BlurVert->renderer->ApplyRenderSettings();
 			scn_BlurVert->renderer->Render();
 		}
+
+		scn_GodRay->ecs->Update(delta);
+		scn_GodRay->ecs->Process(delta);
+		scn_GodRay->renderer->ApplyRenderSettings();
+		scn_GodRay->renderer->Render();
 
 		scn_rtt->ecs->Update(delta);
 		scn_rtt->ecs->Process(delta);

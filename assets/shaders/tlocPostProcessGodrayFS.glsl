@@ -26,7 +26,7 @@ void main()
 
   float illumDec = u_illumDecay;
 
-	vec4 rays = vec4(0, 0, 0, 1);
+  vec4 rays = vec4(0, 0, 0, 1);
 
   for (int i = 0; i < u_numSamples; i++)
   {

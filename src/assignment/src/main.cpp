@@ -347,13 +347,13 @@ private:
 	float			intensity_moon		= 2.9f;
 	math_t::Vec3f32 sunIntensity		= math_t::Vec3f32(1.6f);
 
-	float			default_bloomExposure = 1.2f;
-	int				default_blurPasses = 18;
+	float			default_bloomExposure	= 1.2f;
+	int				default_blurPasses		= 18;
 	float			default_shininess_earth = 35.0f;	//lower = more shiny
 	float			default_intensity_earth = 0.3f;
-	float			default_shininess_moon = 1.0f;
-	float			default_intensity_moon = 2.9f;
-	math_t::Vec3f32 default_sunIntensity = math_t::Vec3f32(1.6f);
+	float			default_shininess_moon	= 1.0f;
+	float			default_intensity_moon	= 2.9f;
+	math_t::Vec3f32 default_sunIntensity	= math_t::Vec3f32(1.6f);
 
 //godray variables
 	int				numberSamples		= 200;
@@ -362,13 +362,15 @@ private:
 	float			weight				= 0.5f;
 	float			godrayExposure		= 0.16f;
 	float			illumination		= 0.8f;
+	math_t::Vec3f32 stencilColor		= math_t::Vec3f32(0.02f);
 
-	int				default_numberSamples = 200;
-	float			default_density = 0.2f;
-	float			default_decay = 0.98f;
-	float			default_weight = 0.5f;
-	float			default_godrayExposure = 0.16f;
-	float			default_illumination = 0.8f;
+	int				default_numberSamples	= 200;
+	float			default_density			= 0.2f;
+	float			default_decay			= 0.98f;
+	float			default_weight			= 0.5f;
+	float			default_godrayExposure	= 0.16f;
+	float			default_illumination	= 0.8f;
+	math_t::Vec3f32 default_stencilColor	= math_t::Vec3f32(0.02f);
 
 //position variables
 	math_t::Vec3f32 sunPosition			= math_t::Vec3f32(			-2,    0,    6); //-x so that the mountains cast correct shadows.
@@ -840,9 +842,12 @@ private:
 
 	//set the uniform
 		gfx_gl::uniform_vso skybox; skybox->SetName("skybox_diffuse").SetValueAs(*skyboxTexture);
+		gfx_gl::uniform_vso stencil; stencil->SetName("stencil_color").SetValueAs(stencilColor);
+
 
 	//add to shader
 		skyboxMaterial->GetShaderOperator()->AddUniform(*skybox);
+		skyboxMaterial->GetShaderOperator()->AddUniform(*stencil);
 	}
 
 //set the texture uniforms in the shaders
@@ -936,6 +941,8 @@ private:
 
 		gfx_gl::f_shader_operator::GetUniform(*rttGodRayMaterial->GetShaderOperator(), "u_exposure")->SetValueAs(godrayExposure);
 		gfx_gl::f_shader_operator::GetUniform(*rttGodRayMaterial->GetShaderOperator(), "u_illumDecay")->SetValueAs(illumination);
+
+		gfx_gl::f_shader_operator::GetUniform(*skyboxMaterial->GetShaderOperator(), "stencil_color")->SetValueAs(stencilColor);
 	}
 
 	void DoRender(sec_type delta) override
@@ -1204,6 +1211,7 @@ private:
 		//r: weight
 		//t: exposure
 		//y: illumination
+		//u: stencil color
 	void godrayTweaking()
 	{
 		//samples
@@ -1253,11 +1261,11 @@ private:
 		{
 			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
 			{
-				weight += 0.1f;
+				weight += 0.01f;
 			}
 			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
 			{
-				weight -= 0.1f;
+				weight -= 0.01f;
 			}
 			TLOC_LOG_CORE_DEBUG() << "GODRAYS::weight  " << weight;
 		}
@@ -1267,11 +1275,11 @@ private:
 		{
 			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
 			{
-				godrayExposure += 0.1f;
+				godrayExposure += 0.01f;
 			}
 			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
 			{
-				godrayExposure -= 0.1f;
+				godrayExposure -= 0.01f;
 			}
 			TLOC_LOG_CORE_DEBUG() << "GODRAYS::exposure  " << godrayExposure;
 		}
@@ -1290,6 +1298,21 @@ private:
 			TLOC_LOG_CORE_DEBUG() << "GODRAYS::illumination  " << illumination;
 		}
 
+
+		//stencil
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::u))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				stencilColor[0] += 0.01f; stencilColor[1] += 0.01f; stencilColor[2] += 0.01f;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				stencilColor[0] -= 0.01f; stencilColor[1] -= 0.01f; stencilColor[2] -= 0.01f;
+			}
+			TLOC_LOG_CORE_DEBUG() << "GODRAYS::stencil color  " << stencilColor[0];
+		}
+
 		//return default values
 		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::d))
 		{
@@ -1299,6 +1322,7 @@ private:
 			weight			= default_weight;
 			godrayExposure	= default_godrayExposure;
 			illumination	= default_illumination;
+			stencilColor	= default_stencilColor;
 
 			TLOC_LOG_CORE_DEBUG() << "RETURNED TO DEFAULT";
 		}
@@ -1312,6 +1336,7 @@ private:
 			default_weight			= weight;
 			default_godrayExposure	= godrayExposure;
 			default_illumination	= illumination;
+			default_stencilColor	= stencilColor;
 
 			TLOC_LOG_CORE_DEBUG() << "SET TO DEFAULT";
 		}

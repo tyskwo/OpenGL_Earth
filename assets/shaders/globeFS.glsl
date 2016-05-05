@@ -3,6 +3,7 @@
 	in		vec3	  v_lightDirection;			//the light direction
 	in		vec3	  v_vertNormal;				//the vertext normal
 	in		vec2	  v_texCoord;				//the texture coordinate for the vertex
+in  vec4 v_shadowCoord;
 
 
 	uniform sampler2D earth_diffuse;			//texture that holds the earth map		
@@ -19,6 +20,8 @@
 	uniform float	  u_cloudAngle;				//amount to shift clouds by
 
 	uniform int		  cloud_flag;			    //flag for whether to draw the clouds
+uniform sampler2DShadow s_shadowMap;
+uniform vec2            u_imgDim;
 
 			vec4	  color;					//the color of the sphere
 			vec3	  vertNorm_interpolated;	//the interpolated normal from each vertex
@@ -36,6 +39,15 @@ float random(vec2 value)
 
 void main()
 {
+	//---------------------------------------------------------------------------
+	const float ambient    = 0.1;
+  const float epsilon    = 0.00001;
+	//---------------------------------------------------------------------------
+
+
+
+
+
 //get the color for each texture at the given coordinate
 	vec4 color_diffuse			= texture2D(earth_diffuse,		vec2(v_texCoord.s,						1 - v_texCoord.t));
 	vec4 color_night			= texture2D(earth_night,		vec2(v_texCoord.s,						1 - v_texCoord.t));
@@ -67,15 +79,55 @@ void main()
 	vertNorm_interpolated = normalize(v_vertNormal);
 
 //get the diffuse and specular multipliers
-	float diffuseMultiplier       = dot(vertNorm_interpolated * color_normals.rgb,			v_lightDirection);
-	float waterDiffuseMultiplier  = dot(vertNorm_interpolated * water_color_normals.rgb,	v_lightDirection);
+	float diffuseMultiplier       = clamp(dot(vertNorm_interpolated * color_normals.rgb,			v_lightDirection), 0.0, 1.0);
+	float waterDiffuseMultiplier  = clamp(dot(vertNorm_interpolated * water_color_normals.rgb,	v_lightDirection), 0.0, 1.0);
 	float specularMultiplier      = dot(vertNorm_interpolated,								v_lightDirection);
 
+
+
+
+
+	//---------------------------------------------------------------------------
+
+
+	vec3 positionLtNDC  = v_shadowCoord.xyz / v_shadowCoord.w;
+
+  vec2 UVCoords;
+  UVCoords.x = positionLtNDC.x;
+  UVCoords.y = positionLtNDC.y;
+  float z    = positionLtNDC.z + epsilon;
+
+  float xOffset = 1.0/u_imgDim.x;
+  float yOffset = 1.0/u_imgDim.y;
+
+  float shadowMult = 0.0;
+  int   pcfR       = 6;
+  
+  for (int y = -pcfR; y <= pcfR; y++)
+  {
+    for (int x = -pcfR; x <= pcfR; x++)
+    {
+      vec2 offsets = vec2(x * xOffset, y * yOffset);
+      vec3 UVC = vec3(UVCoords + offsets, z);
+      shadowMult += texture(s_shadowMap, UVC);
+    }
+  }
+
+  float pcfRSq = float(pcfR + pcfR) + 1.0;
+  pcfRSq = pcfRSq * pcfRSq;
+  shadowMult = (shadowMult / pcfRSq);
+	//---------------------------------------------------------------------------
+
+
+
+	//(ambient + (shadowMult * diffuseMultiplier))
+	//(ambient + (shadowMult * waterDiffuseMultiplier))
+
 //get the correct colors from each of the textures and the appropriate multipliers
-	vec4 land	= color_diffuse * diffuseMultiplier * abs(color_specular - 1.0f);
-	vec4 sea	= color_diffuse * color_specular * waterDiffuseMultiplier;
+	vec4 land	= color_diffuse * (ambient + (shadowMult * diffuseMultiplier)) * abs(color_specular - 1.0f);
+	vec4 sea	= color_diffuse * color_specular * (ambient + (shadowMult * waterDiffuseMultiplier));
 	vec4 night	= color_night * (1.0f - diffuseMultiplier);
-	vec4 clouds = color_clouds * (diffuseMultiplier);
+	vec4 clouds = color_clouds * ((ambient + (shadowMult * diffuseMultiplier)));
 
 //get the interpolated color based on the diffuse texture, night texture, and clouds texture (if clouds are to be drawn)
 	if(cloud_flag == 0)

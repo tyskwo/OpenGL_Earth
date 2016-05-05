@@ -263,6 +263,7 @@ private:
 	Scene*		scn_rtt;
 	Scene*		scn_BlurHor;
 	Scene*		scn_BlurVert;
+	Scene*		scn_GodRay;
 
 
 
@@ -279,6 +280,7 @@ private:
 	Material rttMaterial;
 	Material rttHorBlurMaterial;
 	Material rttVertBlurMaterial;
+	Material rttGodRayMaterial;
 
 
 	Object*		globe;			//the globe
@@ -292,13 +294,21 @@ private:
 	gfx::Rtt*		rtt;
 	gfx::Rtt*		rttBlurHor;
 	gfx::Rtt*		rttBlurVert;
+	gfx::Rtt*		rttGodRays;
+
+
 	TextureObject	rttTo;
 	TextureObject   brightTo;
 	TextureObject   rttHorTo;
 	TextureObject   rttVertTo;
+	TextureObject   toGodRay;
+	TextureObject   toColStencil;
+
+
 	Entity			rttQuad;
 	Entity			rttHorQuad;
 	Entity			rttVertQuad;
+	Entity			rttGodRayQuad;
 
 
 
@@ -310,7 +320,7 @@ private:
 	float			earthAngleDelta		= 0.001f;
 	float			moonAngle			= 0.0f;
 	float			moonAngleDelta		= 50.0f;
-	float			moonDistance		= 1.5f;
+	float			moonDistance		= 2.4f;
 	float			cloudAngle			= 0.0f;
 	float			cloudAngleDelta		= -0.0001f;	//weather generally travels west->east.
 
@@ -319,19 +329,21 @@ private:
 	float			starTwinkleDelta	= 0.005f;
 
 //bloom variables
-	float			bloomExposure		= 1.1f;
-	int				blurPasses			= 8;
-	float			shininess_earth		= 150.0f;	//lower = more shiny
-	float			intensity_earth		= 1.1f;
-	float			shininess_moon		= 2.0f;
-	float			intensity_moon		= 2.2f;
-	math_t::Vec3f32 sunIntensity		= math_t::Vec3f32(1.8f);
+	float			bloomExposure		= 1.2f;
+	int				blurPasses			= 18;
+	float			shininess_earth		= 35.0f;	//lower = more shiny
+	float			intensity_earth		= 0.3f;
+	float			shininess_moon		= 1.0f;
+	float			intensity_moon		= 2.9f;
+	math_t::Vec3f32 sunIntensity		= math_t::Vec3f32(1.6f);
+
+//godray variables
 
 
 //position variables
-	math_t::Vec3f32 sunPosition			= math_t::Vec3f32(  -2,    0,    6); //-x so that the mountains cast correct shadows.
-	math_t::Vec3f32 cameraPosition		= math_t::Vec3f32(   0,    0,    2);
-	math_t::Vec3f32 moonPosition		= math_t::Vec3f32(1.6f, 0.0f, 0.0f);
+	math_t::Vec3f32 sunPosition			= math_t::Vec3f32(			-2,    0,    6); //-x so that the mountains cast correct shadows.
+	math_t::Vec3f32 cameraPosition		= math_t::Vec3f32(			 3,    0,    1);
+	math_t::Vec3f32 moonPosition		= math_t::Vec3f32(moonDistance, 0.0f, 0.0f);
 
 //debug variables
 	bool cloudFlag = false;	//flag to draw the clouds
@@ -398,6 +410,7 @@ private:
 		scn_rtt->ecs->Initialize();
 		scn_BlurHor->ecs->Initialize();
 		scn_BlurVert->ecs->Initialize();
+		scn_GodRay->ecs->Initialize();
 
 
 		return Application::Post_Initialize();
@@ -412,6 +425,7 @@ private:
 		scn_rtt	     = new Scene();
 		scn_BlurHor  = new Scene();
 		scn_BlurVert = new Scene();
+		scn_GodRay   = new Scene();
 
 		cameraControl = scn_main->AddCamera();
 
@@ -419,6 +433,7 @@ private:
 		rtt = new gfx::Rtt(core_ds::MakeTuple(800, 600));
 		rttTo = rtt->AddColorAttachment<0, gfx_t::color_u16_rgba>();
 		brightTo = rtt->AddColorAttachment<1, gfx_t::color_u16_rgba>();
+		toColStencil = rtt->AddColorAttachment(2);
 		rtt->AddDepthAttachment();
 
 		rttBlurHor = new gfx::Rtt(core_ds::MakeTuple(800, 600));
@@ -428,6 +443,10 @@ private:
 		rttBlurVert = new gfx::Rtt(core_ds::MakeTuple(800, 600));
 		rttVertTo = rttBlurVert->AddColorAttachment<0>(brightTo);
 		rttBlurVert->AddDepthAttachment();
+
+		rttGodRays = new gfx::Rtt(core_ds::MakeTuple(800, 600));
+		toGodRay = rttGodRays->AddColorAttachment(0);
+		rttGodRays->AddDepthAttachment();
 
 	//create the renderers for each scene
 		createRenderers();
@@ -463,8 +482,10 @@ private:
 	//set up sun renderer is the same as the rtt renderer
 		auto sunRenderer = rttRenderer;
 
-		//rttBlurHor->GetRenderer()->SetParams(rttRenderParams);
-		//rttBlurVert->GetRenderer()->SetParams(rttRenderParams);
+		auto texParams = toGodRay->GetParams();
+		texParams.Wrap_R<gfx_gl::p_texture_object::wrap_technique::Repeat>();
+		texParams.Wrap_S<gfx_gl::p_texture_object::wrap_technique::Repeat>();
+		toGodRay->SetParams(texParams);
 
 		
 
@@ -475,6 +496,7 @@ private:
 		scn_rtt->SetRenderer(GetRenderer());
 		scn_BlurHor->SetRenderer(rttBlurHor->GetRenderer());
 		scn_BlurVert->SetRenderer(rttBlurVert->GetRenderer());
+		scn_GodRay->SetRenderer(rttGodRays->GetRenderer());
 	}
 
 //create all the materials for the program
@@ -488,6 +510,8 @@ private:
 		rttVertBlurMaterial = createMaterial(scn_BlurVert->ecs, shaderPathGaussianBlurVS, shaderPathGaussianBlurFS);
 		//rttMaterial		= createMaterial(scn_rtt->ecs, oneTextureVS, oneTextureFS);
 		rttMaterial = createMaterial(scn_rtt->ecs, bloomVS, bloomFS);
+
+		rttGodRayMaterial = createMaterial(scn_GodRay->ecs, shaderPathGodrayVS, shaderPathGodrayFS);
 	}
 
 //create a camera
@@ -537,6 +561,7 @@ private:
 		setStarTwinkle();
 		setTextures();
 		setBloomParameters();
+		setGodRayParameters();
 	}
 
 //set the matrices of the skybox and light material
@@ -550,6 +575,9 @@ private:
 		sunMaterial->SetEnableUniform<gfx_cs::p_material::uniforms::k_viewProjectionMatrix>(false);
 		sunMaterial->SetEnableUniform<gfx_cs::p_material::uniforms::k_viewMatrix>();
 		sunMaterial->SetEnableUniform<gfx_cs::p_material::uniforms::k_projectionMatrix>();
+
+		rttGodRayMaterial->SetEnableUniform<gfx_cs::p_material::uniforms::k_viewProjectionMatrix>();
+		rttGodRayMaterial->SetEnableUniform<gfx_cs::p_renderable::uniforms::k_modelMatrix>(false);
 	}
 
 //set the shader's light position
@@ -691,7 +719,7 @@ private:
 		rttMaterial->GetShaderOperator()->AddUniform(*u_exposure);
 	}
 
-//set the blurr hor texture uniforms
+//set the blur hor texture uniforms
 	void setHorBlurTextures()
 	{
 		gfx_gl::uniform_vso u_rttBrightTo; u_rttBrightTo->SetName("s_texture").SetValueAs(*brightTo);
@@ -702,7 +730,7 @@ private:
 		rttHorBlurMaterial->GetShaderOperator()->AddUniform(*u_horizontal);
 	}
 
-//set the blurr vert texture uniforms
+//set the blur vert texture uniforms
 	void setVertBlurTextures()
 	{
 		gfx_gl::uniform_vso u_rttBrightTo; u_rttBrightTo->SetName("s_texture").SetValueAs(*rttHorTo);
@@ -746,13 +774,45 @@ private:
 		gfx_gl::uniform_vso u_intensityEarth; u_intensityEarth->SetName("specularIntensity").SetValueAs(intensity_earth);
 		gfx_gl::uniform_vso u_intensityMoon;  u_intensityMoon->SetName("specularIntensity").SetValueAs(intensity_moon);
 
-
-
-
 		globeMaterial->GetShaderOperator()->AddUniform(*u_shininessEarth);
 		 moonMaterial->GetShaderOperator()->AddUniform(*u_shininessMoon);
 		globeMaterial->GetShaderOperator()->AddUniform(*u_intensityEarth);
 		 moonMaterial->GetShaderOperator()->AddUniform(*u_intensityMoon);
+	}
+
+	void setGodRayParameters()
+	{
+		gfx_gl::uniform_vso  u_toStencil;  u_toStencil->SetName("s_stencil").SetValueAs(*toColStencil);
+		gfx_gl::uniform_vso  u_numSamples; u_numSamples->SetName("u_numSamples").SetValueAs(200);
+		gfx_gl::uniform_vso  u_density;    u_density->SetName("u_density").SetValueAs(0.2f);
+		gfx_gl::uniform_vso  u_decay;      u_decay->SetName("u_decay").SetValueAs(0.98f);
+		gfx_gl::uniform_vso  u_weight;     u_weight->SetName("u_weight").SetValueAs(0.5f);
+		gfx_gl::uniform_vso  u_exposure;   u_exposure->SetName("u_exposure").SetValueAs(0.16f);
+		gfx_gl::uniform_vso  u_illumDecay; u_illumDecay->SetName("u_illumDecay").SetValueAs(0.8f);
+
+
+		rttGodRayMaterial->GetShaderOperator()->AddUniform(*u_toStencil);
+		rttGodRayMaterial->GetShaderOperator()->AddUniform(*u_numSamples);
+		rttGodRayMaterial->GetShaderOperator()->AddUniform(*u_density);
+		rttGodRayMaterial->GetShaderOperator()->AddUniform(*u_decay);
+		rttGodRayMaterial->GetShaderOperator()->AddUniform(*u_weight);
+		rttGodRayMaterial->GetShaderOperator()->AddUniform(*u_exposure);
+		rttGodRayMaterial->GetShaderOperator()->AddUniform(*u_illumDecay);
+	}
+
+//update the bloom parameters (for tweaking)
+	void updateBloomParameters()
+	{
+		gfx_gl::f_shader_operator::GetUniform(*globeMaterial->GetShaderOperator(), "shininess")->SetValueAs(shininess_earth);
+		gfx_gl::f_shader_operator::GetUniform(*moonMaterial->GetShaderOperator(),  "shininess")->SetValueAs(shininess_moon);
+		gfx_gl::f_shader_operator::GetUniform(*globeMaterial->GetShaderOperator(), "specularIntensity")->SetValueAs(intensity_earth);
+		gfx_gl::f_shader_operator::GetUniform(*moonMaterial->GetShaderOperator(),  "specularIntensity")->SetValueAs(intensity_moon);
+
+		gfx_gl::f_shader_operator::GetUniform(*rttMaterial->GetShaderOperator(), "u_exposure")->SetValueAs(bloomExposure);
+
+		gfx_gl::f_shader_operator::GetUniform(*globeMaterial->GetShaderOperator(), "u_lightColor")->SetValueAs(sunIntensity);
+		gfx_gl::f_shader_operator::GetUniform(*moonMaterial->GetShaderOperator(),  "u_lightColor")->SetValueAs(sunIntensity);
+		gfx_gl::f_shader_operator::GetUniform(*sunMaterial->GetShaderOperator(),   "u_lightColor")->SetValueAs(sunIntensity);
 	}
 
 	void DoRender(sec_type delta) override
@@ -846,7 +906,120 @@ private:
 			updateCloudFlag();
 		}
 
+	//exposure
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::p))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				bloomExposure += 0.1f;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				bloomExposure -= 0.1f;
+			}
+			TLOC_LOG_CORE_DEBUG() << bloomExposure;
+		}
 
+	//earth shininess
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::e))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				shininess_earth += 1.0f;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				shininess_earth -= 1.0f;
+			}
+			TLOC_LOG_CORE_DEBUG() << shininess_earth;
+		}
+
+	//moon shininess
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::m))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				shininess_moon += 1.0f;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				shininess_moon -= 1.0f;
+			}
+			TLOC_LOG_CORE_DEBUG() << shininess_moon;
+		}
+
+	//earth intensity
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::w))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				intensity_earth += 0.1f;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				intensity_earth -= 0.1f;
+			}
+			TLOC_LOG_CORE_DEBUG() << intensity_earth;
+		}
+
+	//moon intensity
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::n))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				intensity_moon += 0.1f;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				intensity_moon -= 0.1f;
+			}
+			TLOC_LOG_CORE_DEBUG() << intensity_moon;
+		}
+
+	//light intensity
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::s))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				sunIntensity[0] += 0.1f; sunIntensity[1] += 0.1f; sunIntensity[2] += 0.1f;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				sunIntensity[0] -= 0.1f; sunIntensity[1] -= 0.1f; sunIntensity[2] -= 0.1f;
+			}
+			TLOC_LOG_CORE_DEBUG() << sunIntensity[0];
+		}
+
+	//blur intensity
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::b))
+		{
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::up))
+			{
+				blurPasses++;
+			}
+			if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::down))
+			{
+				blurPasses--;
+			}
+			TLOC_LOG_CORE_DEBUG() << blurPasses;
+		}
+
+	//default values
+		if (GetKeyboard()->IsKeyDown(input_hid::KeyboardEvent::d))
+		{
+			bloomExposure	= 1.2f;
+			blurPasses		= 18;
+			sunIntensity[0] = 1.6f; sunIntensity[1] = 1.6f; sunIntensity[2] = 1.6f;
+			intensity_earth = 0.3f;
+			intensity_moon  = 2.9f;
+			shininess_earth = 35.0f;
+			shininess_moon  = 1.0f;
+
+			TLOC_LOG_CORE_DEBUG() << "DEFAULT";
+		}
+
+
+		updateBloomParameters();
 
 
 	//call Application's DoUpdate for camera controls

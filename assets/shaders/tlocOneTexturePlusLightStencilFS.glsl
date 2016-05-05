@@ -12,7 +12,8 @@ layout (location = 2) out vec4 o_stencil;
 void main()
 {
 	o_color = texture2D(s_texture, vec2(v_texCoord[0], 1.0 - v_texCoord[1]));
-  o_stencil = o_color * 0.5;
+	o_stencil = o_color * 0.5;
+	o_stencil.a = o_color.a;
 	o_color = o_color * vec4(u_lightColor, 1.0);
   
 	float brightness = dot(o_color.rgb, vec3(0.2126, 0.7152, 0.0722));

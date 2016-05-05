@@ -9,6 +9,8 @@ uniform sampler2D s_bright;
 uniform sampler2D s_godray;
 uniform float     u_exposure;
 
+uniform int		  u_flag;
+
 void main()
 {
   vec2 tex_offset = 1.0 / textureSize(s_bright, 0);
@@ -29,4 +31,7 @@ void main()
   // also gamma correct while we're at it       
   result = pow(result, vec3(1.0 / gamma));
   o_color = vec4(result, 1.0);
+
+  if(u_flag == 1) { o_color = vec4(bright, 1.0);; }
+  if(u_flag == 2) { o_color = vec4(godray, 1.0);; }
 }
